@@ -1,9 +1,10 @@
 #ifndef ARR_LINEAR_H
 #define ARR_LINEAR_H
 
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Arr_linear_traits_2.h>
 #include <CGAL/Arrangement_2.h>
+
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 
 using Kernel = CGAL::Exact_predicates_exact_constructions_kernel;
 using Number_type = Kernel::FT;

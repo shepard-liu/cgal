@@ -25,6 +25,9 @@ if(CGAL_Qt6_FOUND)
   target_link_libraries(circles PRIVATE CGAL::CGAL_Basic_viewer)
   target_link_libraries(circular_arcs PRIVATE CGAL::CGAL_Basic_viewer)
   target_link_libraries(spherical_insert PRIVATE CGAL::CGAL_Basic_viewer)
+  target_link_libraries(global_removal PRIVATE CGAL::CGAL_Basic_viewer)
+  target_link_libraries(bounded_vertical_decomposition PRIVATE CGAL::CGAL_Basic_viewer)
+  target_link_libraries(aggregated_insertion PRIVATE CGAL::CGAL_Basic_viewer)
 else()
   message(
     STATUS

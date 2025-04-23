@@ -28,7 +28,8 @@
 #include "Verification.h"
 
 //! \brief
-Main_widget::Main_widget(const QString& file_name) : m_file_name(file_name) {}
+Main_widget::Main_widget(const QString& file_name)
+    : m_file_name(file_name) {}
 
 //! \brief
 Main_widget::~Main_widget() {
@@ -38,14 +39,13 @@ Main_widget::~Main_widget() {
 }
 
 //! \brief
-void Main_widget::set_mouse_pos(const QVector3D mouse_pos)
-{ m_gr_mouse_vertex->set_pos(mouse_pos); }
+void Main_widget::set_mouse_pos(const QVector3D mouse_pos) { m_gr_mouse_vertex->set_pos(mouse_pos); }
 
 //! \brief
 void Main_widget::hightlight_country(const std::string& country_name) {
-  static std::string  prev_picked_country;
+  static std::string prev_picked_country;
 
-  if (! prev_picked_country.empty()) {
+  if(!prev_picked_country.empty()) {
     // dim the previous country color
     auto& prev_country = m_gr_country_triangles[prev_picked_country];
     auto color = prev_country->get_color();
@@ -54,7 +54,7 @@ void Main_widget::hightlight_country(const std::string& country_name) {
     prev_country->set_color(color);
   }
 
-  if (! country_name.empty()) {
+  if(!country_name.empty()) {
     // highlight the current country color
     auto& curr_country = m_gr_country_triangles[country_name];
     auto color = curr_country->get_color();
@@ -117,7 +117,7 @@ void Main_widget::initializeGL() {
 
   qDebug() << "loading arrangement..";
   m_arrh = Aos::load_arr(m_file_name.toStdString());
-  if (m_arrh == nullptr) {
+  if(m_arrh == nullptr) {
     std::string msg("Error: failed to load file ");
     msg += m_file_name.toStdString();
     throw std::runtime_error(msg);
@@ -127,17 +127,15 @@ void Main_widget::initializeGL() {
   init_country_borders(m_current_approx_error);
 
   qDebug() << "generating triangles..";
-  //auto triangle_points = Aos::get_triangles(arrh);
-  //auto triangle_points = Aos_triangulator::get_all(arrh);
-  //auto country_triangles_map = Aos::get_triangles_by_country(m_arrh);
-  auto country_triangles_map =
-    Aos_triangulator::get_by_country(m_arrh, m_current_approx_error,
-                                     m_num_uniform_points);
-  //auto color_map = Aos::get_color_mapping(m_arrh);
-  //qDebug() << "color map size = " << color_map.size();
+  // auto triangle_points = Aos::get_triangles(arrh);
+  // auto triangle_points = Aos_triangulator::get_all(arrh);
+  // auto country_triangles_map = Aos::get_triangles_by_country(m_arrh);
+  auto country_triangles_map = Aos_triangulator::get_by_country(m_arrh, m_current_approx_error, m_num_uniform_points);
+  // auto color_map = Aos::get_color_mapping(m_arrh);
+  // qDebug() << "color map size = " << color_map.size();
   qDebug() << "num countries = " << country_triangles_map.size();
-  auto rndm = [] {return rand() / double(RAND_MAX); };
-  for (auto& [country_name, triangle_points] : country_triangles_map) {
+  auto rndm = [] { return rand() / double(RAND_MAX); };
+  for(auto& [country_name, triangle_points] : country_triangles_map) {
     auto country_triangles = std::make_unique<Triangles>(triangle_points);
     auto color = QVector4D(rndm(), rndm(), rndm(), 1);
     auto m = (std::max)(color.x(), (std::max)(color.y(), color.z()));
@@ -145,17 +143,17 @@ void Main_widget::initializeGL() {
     color *= m_dimming_factor;
     color.setW(1);
     country_triangles->set_color(color);
-    //country_triangles->set_color(colors[color_map[country_name]]);
+    // country_triangles->set_color(colors[color_map[country_name]]);
     m_gr_country_triangles.emplace(country_name, std::move(country_triangles));
   }
   country_triangles_map.clear();
 
-  //qDebug() << "num triangles = " << triangle_points.size() / 3;
-  //m_gr_all_triangles = std::make_unique<Triangles>(triangle_points);
+  // qDebug() << "num triangles = " << triangle_points.size() / 3;
+  // m_gr_all_triangles = std::make_unique<Triangles>(triangle_points);
 
   glClearColor(0, 0, 0, 1);
-  glEnable(GL_DEPTH_TEST);  // Enable depth buffer
-  glEnable(GL_CULL_FACE); // Enable back face culling
+  glEnable(GL_DEPTH_TEST); // Enable depth buffer
+  glEnable(GL_CULL_FACE);  // Enable back face culling
 
   // Use QBasicTimer because its faster than QTimer
   // m_timer.start(12, this);
@@ -165,22 +163,21 @@ void Main_widget::initializeGL() {
 void Main_widget::init_camera() {
   m_camera.set_pos(0, 0, 3);
   m_camera_manip_rot = std::make_unique<Camera_manip_rot>(m_camera);
-  //m_camera_manip_rot = std::make_unique<Camera_manip_rot_bpa>(m_camera);
+  // m_camera_manip_rot = std::make_unique<Camera_manip_rot_bpa>(m_camera);
   m_camera_manip_zoom = std::make_unique<Camera_manip_zoom>(m_camera);
 
   // this makes z-axes point upwards!
   m_model.rotate(-90, 1, 0, 0);
 
   // register the zoom-changed function
-  Message_manager::add("zoom_changed",
-                       [&] {
-                         qDebug() << "ZOOM CHANGED!!!";
-                         //const auto error = compute_backprojected_error(0.5);
-                         //qDebug() << "new error = " << error;
-                         m_update_approx_error = true;
-                         //qDebug() << "re-initializing the country borders..";
-                         //init_country_borders(error);
-                       });
+  Message_manager::add("zoom_changed", [&] {
+    qDebug() << "ZOOM CHANGED!!!";
+    // const auto error = compute_backprojected_error(0.5);
+    // qDebug() << "new error = " << error;
+    m_update_approx_error = true;
+    // qDebug() << "re-initializing the country borders..";
+    // init_country_borders(error);
+  });
 }
 
 //! \brief
@@ -205,7 +202,8 @@ void Main_widget::init_geometry() {
 //! \brief
 void Main_widget::init_shader_programs() {
   Shader_program::set_shader_path("shaders/");
-  m_sp_smooth.init_with_vs_fs("smooth");;
+  m_sp_smooth.init_with_vs_fs("smooth");
+  ;
   m_sp_per_vertex_color.init_with_vs_fs("per_vertex_color");
   m_sp_arc.init_with_vs_fs("arc");
 }
@@ -240,7 +238,7 @@ float Main_widget::compute_backprojected_error(float pixel_error) {
 
   float d = dist_to_cam - r;
   float err = wp0.distanceToPoint(wp1) * (d / z_near);
-  //find_minimum_projected_error_on_sphere(err);
+  // find_minimum_projected_error_on_sphere(err);
   return err;
 }
 
@@ -262,22 +260,23 @@ void Main_widget::resizeGL(int w, int h) {
 }
 
 //! \brief
-template<typename T>
-void draw_safe(T& ptr) { if (ptr) ptr->draw(); }
+template <typename T> void draw_safe(T& ptr) {
+  if(ptr)
+    ptr->draw();
+}
 
 //! \brief
 void Main_widget::paintGL() {
-  if (m_update_approx_error) {
+  if(m_update_approx_error) {
     const auto error = compute_backprojected_error(0.5);
     qDebug() << "current error = " << m_current_approx_error;
     qDebug() << "new approx error = " << error;
-    if (error < m_current_approx_error) {
+    if(error < m_current_approx_error) {
       init_country_borders(error);
       m_current_approx_error = error;
       auto ratio = static_cast<double>(m_current_approx_error) / error;
-      m_num_uniform_points *= ratio*ratio;
-      std::cout << "num uniform points = " << m_num_uniform_points
-                << std::endl;
+      m_num_uniform_points *= ratio * ratio;
+      std::cout << "num uniform points = " << m_num_uniform_points << std::endl;
     }
     m_update_approx_error = false;
   }
@@ -317,7 +316,7 @@ void Main_widget::paintGL() {
       auto sphere_color = QVector4D(167, 205, 242, 255) / 255;
       sp.set_uniform("u_color", sphere_color);
       sp.set_uniform("u_plane", QVector4D(0, 0, 0, 0));
-      //sp.set_uniform("u_color", m_sphere->get_color());
+      // sp.set_uniform("u_color", m_sphere->get_color());
 
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
       m_gr_sphere->draw();
@@ -326,20 +325,19 @@ void Main_widget::paintGL() {
     // DRAW SOLID FACES
     {
       glDisable(GL_DEPTH_TEST);
-      //auto face_color = QVector4D(241, 141, 0, 255) / 255;
-      //sp.set_uniform("u_color", face_color);
+      // auto face_color = QVector4D(241, 141, 0, 255) / 255;
+      // sp.set_uniform("u_color", face_color);
       sp.set_uniform("u_plane", plane);
-      //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-      //m_gr_all_triangles->draw();
-      for (auto& [country_name, country] : m_gr_country_triangles)
-      {
+      // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+      // m_gr_all_triangles->draw();
+      for(auto& [country_name, country] : m_gr_country_triangles) {
         sp.set_uniform("u_color", country->get_color());
         country->draw();
       }
 
-      //sp.set_uniform("u_color", QVector4D(0,0,0,1));
-      //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-      //m_gr_all_triangles->draw();
+      // sp.set_uniform("u_color", QVector4D(0,0,0,1));
+      // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+      // m_gr_all_triangles->draw();
     }
 
     sp.unuse();
@@ -382,10 +380,10 @@ void Main_widget::paintGL() {
     {
       glPointSize(5);
       sp.set_uniform("u_color", QVector4D(1, 0, 0, 1));
-      //auto pos = m_mouse_vertex->get_pos();
-      //pos.setX(pos.x() + 0.01);
-      //m_mouse_vertex->set_pos(pos);
-      //m_gr_mouse_vertex->set_pos(m_mouse_pos);
+      // auto pos = m_mouse_vertex->get_pos();
+      // pos.setX(pos.x() + 0.01);
+      // m_mouse_vertex->set_pos(pos);
+      // m_gr_mouse_vertex->set_pos(m_mouse_pos);
       draw_safe(m_gr_mouse_vertex);
     }
 
