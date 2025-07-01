@@ -150,6 +150,62 @@
 //   CGAL::draw_viewer(arr);
 // }
 
+// void draw_segments_arr_5() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Segment_traits = CGAL::Arr_segment_traits_2<Exact_kernel>;
+//   using Point_2 = Segment_traits::Point_2;
+//   using X_monotone_curve_2 = Segment_traits::X_monotone_curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Segment_traits>;
+//   Arrangement arr;
+//   auto traits = arr.traits();
+//   auto cst_x_curve = traits->construct_x_monotone_curve_2_object();
+
+//   std::vector<X_monotone_curve_2> segments;
+
+//   std::vector<Point_2> polyline1{
+//       {11, 23},  {12, -13}, {17, -13}, {18, 1},  {18, 16},  {18, 23},  {15, 35},  {15, 44},  {18, 47},  {19, 42},
+//       {19, 37},  {20, 28},  {23, 21},  {23, 9},  {24, -7},  {22, -15}, {20, -19}, {15, -19}, {10, -16}, {7, -14},
+//       {7, -3},   {5, 11},   {1, 20},   {0, 35},  {1, 45},   {3, 51},   {5, 53},   {11, 53},  {19, 53},  {23, 49},
+//       {25, 40},  {28, 31},  {34, 16},  {35, 7},  {38, -11}, {44, -11}, {43, -7},  {43, -5},  {42, 7},   {40, 23},
+//       {38, 30},  {35, 49},  {19, 57},  {8, 58},  {-2, 55},  {-2, 30},  {-3, 15},  {-3, -16}, {1, -20},  {12, -22},
+//       {20, -22}, {25, -21}, {26, -14}, {28, -3}, {27, 15},  {23, 31},  {22, 44},  {20, 49},  {15, 49},  {10, 46},
+//       {8, 39},   {8, 32},   {8, 28},   {11, 23},
+//   };
+//   for(size_t i = 0; i < polyline1.size() - 1; ++i) {
+//     segments.push_back(cst_x_curve(polyline1[i], polyline1[i + 1]));
+//   }
+
+//   CGAL::insert(arr, segments.begin(), segments.end());
+
+//   CGAL::draw_viewer(arr);
+// }
+
+// void draw_segments_arr_6() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Segment_traits = CGAL::Arr_segment_traits_2<Exact_kernel>;
+//   using Point_2 = Segment_traits::Point_2;
+//   using X_monotone_curve_2 = Segment_traits::X_monotone_curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Segment_traits>;
+//   Arrangement arr;
+//   auto traits = arr.traits();
+//   auto cst_x_curve = traits->construct_x_monotone_curve_2_object();
+
+//   std::vector<X_monotone_curve_2> segments;
+
+//   std::vector<Point_2> polyline1{
+//       {9, -3},   {11, -34}, {26, -34}, {26, -8}, {26, -34}, {36, -34}, {36, -31}, {36, -27}, {37, -23}, {41, -23},
+//       {47, -23}, {49, -16}, {49, -2},  {42, 10}, {41, 0},   {41, -19}, {41, 0},   {42, 10},  {30, 10},  {28, 6},
+//       {28, 2},   {29, -30}, {28, 2},   {28, 6},  {30, 10},  {42, 10},  {29, 16},  {18, 12},  {9, -3},
+//   };
+//   for(size_t i = 0; i < polyline1.size() - 1; ++i) {
+//     segments.push_back(cst_x_curve(polyline1[i], polyline1[i + 1]));
+//   }
+
+//   CGAL::insert(arr, segments.begin(), segments.end());
+
+//   CGAL::draw_viewer(arr);
+// }
+
 // void draw_linear_arr_1() {
 //   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
 //   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
@@ -226,6 +282,45 @@ void draw_linear_arr_2() {
   CGAL::draw_viewer(arr);
 }
 
+// void draw_linear_arr_3() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
+//   using Point_2 = Traits::Point_2;
+//   using Line_2 = Traits::Line_2;
+//   using Segment_2 = Traits::Segment_2;
+//   using Ray_2 = Traits::Ray_2;
+//   using Curve_2 = Traits::Curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
+//   using Face_const_handle = Arrangement::Face_const_handle;
+//   using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
+//   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
+
+//   std::vector<Point_2> points{
+//       {11, 23},  {12, -13}, {17, -13}, {18, 1},  {18, 16},  {18, 23},  {15, 35},  {15, 44},  {18, 47},  {19, 42},
+//       {19, 37},  {20, 28},  {23, 21},  {23, 9},  {24, -7},  {22, -15}, {20, -19}, {15, -19}, {10, -16}, {7, -14},
+//       {7, -3},   {5, 11},   {1, 20},   {0, 35},  {1, 45},   {3, 51},   {5, 53},   {11, 53},  {19, 53},  {23, 49},
+//       {25, 40},  {28, 31},  {34, 16},  {35, 7},  {38, -11}, {44, -11}, {43, -7},  {43, -5},  {42, 7},   {40, 23},
+//       {38, 30},  {35, 49},  {19, 57},  {8, 58},  {-2, 55},  {-2, 30},  {-3, 15},  {-3, -16}, {1, -20},  {12, -22},
+//       {20, -22}, {25, -21}, {26, -14}, {28, -3}, {27, 15},  {23, 31},  {22, 44},  {20, 49},  {15, 49},  {10, 46},
+//       {8, 39},   {8, 32},   {8, 28},   {11, 23},
+//   };
+
+//   Arrangement arr;
+//   auto& traits = *arr.traits();
+//   std::vector<X_monotone_curve_2> segments;
+//   for(size_t i = 0; i < points.size() - 1; ++i) {
+//     Point_2 p1 = points[i];
+//     Point_2 p2 = points[i + 1];
+//     // create a segment
+//     X_monotone_curve_2 seg = traits.construct_x_monotone_curve_2_object()(p1, p2);
+//     segments.push_back(seg);
+//   }
+
+//   // insert segments into the arrangement
+//   CGAL::insert(arr, segments.begin(), segments.end());
+
+//   CGAL::draw_viewer(arr);
+// }
 // // supports segments
 // void draw_circle_segs_arr() {
 //   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
@@ -348,7 +443,7 @@ using Point = Kernel::Point_2;
 // }
 
 int main() {
-  // draw_segments_arr_4();
+  // draw_segments_arr_6();
   draw_linear_arr_2();
   // test_zone();
   // draw_conic_arcs_arr();
