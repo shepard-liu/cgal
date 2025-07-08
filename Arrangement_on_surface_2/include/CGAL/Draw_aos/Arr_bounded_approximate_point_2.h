@@ -2,17 +2,20 @@
 #ifndef CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_POINT_2_H
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_POINT_2_H
 
-#include "CGAL/Draw_aos/Arr_render_context.h"
+#include <utility>
+
+#include <CGAL/Draw_aos/type_utils.h>
+#include <CGAL/Draw_aos/Arr_render_context.h>
 #include <CGAL/Draw_aos/helpers.h>
 #include <CGAL/Draw_aos/Arr_approximate_point_2.h>
 #include <CGAL/Draw_aos/Arr_approximation_geometry_traits.h>
-#include <utility>
 
 namespace CGAL {
+namespace draw_aos {
+
 class Arr_bounded_approximate_point_2
 {
-  using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = Geom_traits::Point_2;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
   using Vertex_const_handle = Arrangement::Vertex_const_handle;
   using Point_geom = Arr_approximation_geometry_traits::Point_geom;
 
@@ -50,6 +53,7 @@ private:
   const Arr_bounded_render_context& m_ctx;
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif // CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_POINT_2_H

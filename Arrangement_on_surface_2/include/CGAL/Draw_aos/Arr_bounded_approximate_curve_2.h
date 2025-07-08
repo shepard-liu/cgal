@@ -9,6 +9,7 @@
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/basic.h"
 #include <algorithm>
 #include <cstddef>
@@ -17,6 +18,7 @@
 #include <vector>
 
 namespace CGAL {
+namespace draw_aos {
 
 /**
  * @brief Functor to approximate an x-monotone curve within an bounding box.
@@ -26,17 +28,14 @@ namespace CGAL {
  * succeeds a part within, the approximation may be skipped but there will be at least one point outside the bbox for
  * indication.
  *
- * @note Bounded approximation is meaningful only when the curve has at least two points within the bbox (boundary
- * points included).
- *
  * TODO: Possible optimizations:
  * - Specialize for traits that models Approximate_2 on curves.
  */
 class Arr_bounded_approximate_curve_2
 {
-  using FT = Geom_traits::FT;
-  using Point_2 = Geom_traits::Point_2;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
+  using FT = Type_traits<Geom_traits>::FT;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
   using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
   using Point_geom = Arr_approximation_geometry_traits::Point_geom;
@@ -204,10 +203,6 @@ public:
 
     const X_monotone_curve_2& curve = he->curve();
 
-    if(curve.is_degenerate()) {
-      return polyline;
-    }
-
     auto top_inters = compute_intersections(curve, m_top, m_ctx.intersect_2, m_ctx.cst_curve_end);
     auto bottom_inters = compute_intersections(curve, m_bottom, m_ctx.intersect_2, m_ctx.cst_curve_end);
     Execution_context ctx(m_ctx, curve, m_approx_pt, m_compute_y_at_x, top_inters, bottom_inters, polyline);
@@ -267,5 +262,7 @@ private:
   const X_monotone_curve_2 m_top;
   const X_monotone_curve_2 m_bottom;
 };
+
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_CURVE_2_H

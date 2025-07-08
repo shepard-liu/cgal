@@ -1,11 +1,13 @@
 #ifndef CGAL_DRAW_AOS_ARR_COMPUTE_Y_AT_X_H
 #define CGAL_DRAW_AOS_ARR_COMPUTE_Y_AT_X_H
-#include "CGAL/Bbox_2.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/helpers.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include <boost/iterator/function_output_iterator.hpp>
+#include <limits>
 
 namespace CGAL {
+namespace draw_aos {
 
 /**
  * @brief Functor to compute the y-coordinate at a given x-coordinate for an x-monotone curve within a bounding box.
@@ -13,13 +15,13 @@ namespace CGAL {
 class Arr_compute_y_at_x
 {
 public:
-  using Point_2 = Geom_traits::Point_2;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
-  using Intersect_2 = Geom_traits::Intersect_2;
-  using Construct_min_vertex_2 = Geom_traits::Construct_min_vertex_2;
-  using FT = Geom_traits::FT;
-  using Approximate_2 = Geom_traits::Approximate_2;
-  using Is_vertical_2 = Geom_traits::Is_vertical_2;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
+  using Intersect_2 = Type_traits<Geom_traits>::Intersect_2;
+  using Construct_min_vertex_2 = Type_traits<Geom_traits>::Construct_min_vertex_2;
+  using FT = Type_traits<Geom_traits>::FT;
+  using Approximate_2 = Type_traits<Geom_traits>::Approximate_2;
+  using Is_vertical_2 = Type_traits<Geom_traits>::Is_vertical_2;
 
   Arr_compute_y_at_x(const Arr_render_context& ctx)
       : m_ctx(ctx)
@@ -57,8 +59,12 @@ public:
 
     auto vertical_line = m_ctx.cst_vertical_segment(x, m_ymin, m_ymax);
     std::optional<FT> y;
-    auto func_out_iter = boost::make_function_output_iterator(
-        [&y, this](const Intersect_type& res) { y = std::get<Intersect_point>(res).first.y(); });
+    auto func_out_iter = boost::make_function_output_iterator([&y, this](const Intersect_type& res) {
+      CGAL_assertion_msg(std::holds_alternative<Intersect_point>(res),
+                         "Unexpected intersection type, expected Intersect_point");
+
+      y = std::get<Intersect_point>(res).first.y();
+    });
     m_ctx.intersect_2(curve, vertical_line, func_out_iter);
     return y;
   }
@@ -68,10 +74,14 @@ private:
   const Arr_render_context& m_ctx;
 
   // Should be enough for visualization purposes.
-  constexpr static double m_ymin = std::numeric_limits<double>::lowest();
-  constexpr static double m_ymax = std::numeric_limits<double>::max();
+  // constexpr static double m_ymin = std::numeric_limits<double>::lowest();
+  // constexpr static double m_ymax = std::numeric_limits<double>::max();
+  // maximum of double is too large for CORE::BigFloat, no idea why
+  constexpr static double m_ymin = -1e8;
+  constexpr static double m_ymax = 1e8;
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif // CGAL_DRAW_AOS_ARR_COMPUTE_Y_AT_X_H

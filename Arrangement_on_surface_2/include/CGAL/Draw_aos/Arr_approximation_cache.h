@@ -5,8 +5,11 @@
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/unordered_flat_map.h"
 #include <boost/range/iterator_range.hpp>
+#include <cstddef>
 
 namespace CGAL {
+namespace draw_aos {
+
 class Arr_approximation_cache
 {
   using Approx_geom_traits = Arr_approximation_geometry_traits;
@@ -38,6 +41,12 @@ private:
   }
 
 public:
+  Arr_approximation_cache() = default;
+
+  void reserve_vertex_cache(std::size_t size) { m_vertex_cache.reserve(size); }
+  void reserve_halfedge_cache(std::size_t size) { m_halfedge_cache.reserve(size); }
+  void reserve_face_cache(std::size_t size) { m_face_cache.reserve(size); }
+
   std::pair<Vertex_cache_obj&, bool> try_emplace(const Vertex_const_handle& vh) {
     const auto& [it, inserted] = m_vertex_cache.try_emplace(vh, Vertex_cache_obj());
     return {it->second, inserted};
@@ -104,5 +113,6 @@ private:
   Face_cache m_face_cache;
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_APPROXIMATION_CACHE_H

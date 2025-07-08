@@ -1,13 +1,16 @@
 #ifndef CGAL_DRAW_AOS_ARR_CONSTRUCT_SEGMENTS_H
 #define CGAL_DRAW_AOS_ARR_CONSTRUCT_SEGMENTS_H
 #include "CGAL/Draw_aos/helpers.h"
+#include "CGAL/Draw_aos/type_utils.h"
 
 namespace CGAL {
+namespace draw_aos {
+
 class Arr_construct_vertical_segment
 {
-  using Point_2 = Geom_traits::Point_2;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
-  using FT = Geom_traits::FT;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
+  using FT = Type_traits<Geom_traits>::FT;
 
 public:
   Arr_construct_vertical_segment(const Geom_traits& traits)
@@ -24,9 +27,9 @@ private:
 
 class Arr_construct_horizontal_segment
 {
-  using Point_2 = Geom_traits::Point_2;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
-  using FT = Geom_traits::FT;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
+  using FT = Type_traits<Geom_traits>::FT;
 
 public:
   Arr_construct_horizontal_segment(const Geom_traits& traits)
@@ -40,6 +43,8 @@ public:
 private:
   const Geom_traits& m_traits;
 };
+
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif

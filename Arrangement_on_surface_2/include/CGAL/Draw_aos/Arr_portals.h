@@ -16,6 +16,8 @@
 #include <utility>
 
 namespace CGAL {
+namespace draw_aos {
+
 /**
  * @brief Portals are virtual vertical segments that connect the outer
  * connected component boundary (ccb) of a face with its inner ccbs.
@@ -84,6 +86,7 @@ public:
 
     auto func_out_iter = boost::make_function_output_iterator([&](const Vert_decomp_entry& entry) {
       const auto& [vh, obj_pair] = entry;
+      const auto& above_feat = obj_pair.second;
 
       const auto& ccb_main_vertex = conn.ccb_representative_vertex(vh);
       if(visited_ccbs.find(ccb_main_vertex) != visited_ccbs.end()) {
@@ -91,7 +94,6 @@ public:
         return;
       }
 
-      const auto& above_feat = obj_pair.second;
       if(Vertex_const_handle above_vh; CGAL::assign(above_vh, above_feat)) {
         if(conn.is_connected(above_vh, vh)) {
           // This upper vertex is connected to vh, skip it
@@ -99,7 +101,7 @@ public:
         }
 
         const auto& [it, _] = feature_portals.try_emplace(above_vh, std::vector<Portal>{});
-        if((above_vh)->is_at_open_boundary()) {
+        if(above_vh->is_at_open_boundary()) {
           it->second.emplace_back(std::nullopt, vh);
         } else {
           it->second.emplace_back(approx_pt((above_vh)->point()), vh);
@@ -110,11 +112,11 @@ public:
         }
 
         const auto& [it, _] = feature_portals.try_emplace(above_he, std::vector<Portal>{});
-        if((above_he)->is_fictitious()) {
+        if(above_he->is_fictitious()) {
           it->second.emplace_back(std::nullopt, vh);
-          return;
+        } else {
+          it->second.emplace_back(approx_pt(upper_intersection(*arr.traits(), vh->point(), (above_he)->curve())), vh);
         }
-        it->second.emplace_back(approx_pt(upper_intersection(*arr.traits(), vh->point(), (above_he)->curve())), vh);
       } else if(Face_const_handle above_fh; CGAL::assign(above_fh, above_feat)) {
         // We don't create portals for the unbounded face in bounded arrangements.
         CGAL_assertion(above_fh->is_unbounded() && !above_fh->has_outer_ccb());
@@ -129,5 +131,7 @@ public:
     return feature_portals;
   }
 };
+
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_CREATE_PORTALS_H

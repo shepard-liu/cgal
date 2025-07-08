@@ -4,10 +4,12 @@
 #include "CGAL/Arr_enums.h"
 #include "CGAL/Arr_has.h"
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
+#include "CGAL/Draw_aos/helpers.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include <optional>
 
 namespace CGAL {
-
+namespace draw_aos {
 namespace internal {
 
 template <typename Geom_traits>
@@ -94,8 +96,11 @@ public:
 
 template <typename Geom_traits>
 using Arr_construct_curve_end =
-    internal::Arr_construct_curve_end_impl<Geom_traits, has_parameter_space_in_x_2<Geom_traits>::value>;
+    internal::Arr_construct_curve_end_impl<Geom_traits,
+                                           Type_traits<Geom_traits>::Has_unbounded_curves &&
+                                               has_parameter_space_in_x_2<Geom_traits>::value>;
 
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif // CGAL_ARR_CONSTRUCT_CURVE_END_H

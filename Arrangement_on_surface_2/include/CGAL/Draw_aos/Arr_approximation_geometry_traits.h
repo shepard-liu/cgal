@@ -4,6 +4,8 @@
 #include "CGAL/Simple_cartesian.h"
 
 namespace CGAL {
+namespace draw_aos {
+
 class Arr_approximation_geometry_traits
 {
 public:
@@ -22,5 +24,6 @@ public:
   };
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_APPROXIMATION_GEOMETRY_TRAITS_H

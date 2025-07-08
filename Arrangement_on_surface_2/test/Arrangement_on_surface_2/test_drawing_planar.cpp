@@ -10,9 +10,11 @@
 #include "CGAL/Arr_spherical_topology_traits_2.h"
 #include "CGAL/Arrangement_2.h"
 #include "CGAL/Arrangement_on_surface_2.h"
+#include "CGAL/CORE/BigFloat.h"
 #include "CGAL/CORE_algebraic_number_traits.h"
 #include "CGAL/Draw_aos/Arr_viewer.h"
 #include <array>
+
 #include <fstream>
 #include <iostream>
 #include "CGAL/Exact_predicates_exact_constructions_kernel.h"
@@ -38,7 +40,38 @@
 //       cst_x_curve({2, 2}, {1, 1}),
 //   };
 //   insert(arr, hole_triangle.begin(), hole_triangle.end());
-//   // CGAL::draw_viewer(arr);
+
+//   // sqr2 centered at (10, 10) with side length 2
+//   auto sqr2 = {cst_x_curve({9, 9}, {11, 9}), cst_x_curve({11, 9}, {11, 11}), cst_x_curve({11, 11}, {9, 11}),
+//                cst_x_curve({9, 11}, {9, 9})};
+//   auto seg1 = cst_x_curve({15, 10}, {19, 12});
+//   auto seg2 = cst_x_curve({20, 12}, {14, 10});
+
+//   insert(arr, sqr2.begin(), sqr2.end());
+//   insert(arr, seg1);
+//   insert(arr, seg2);
+
+//   for(auto fh : arr.face_handles()) {
+//     std::cout << "Face: is unbounded = " << fh->is_unbounded() << std::endl;
+//     for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
+//       std::cout << "  Inner CCB: " << std::endl;
+//       auto circ = *inner_ccb;
+//       do {
+//         std::cout << "    Curve: " << circ->curve() << std::endl;
+//         circ = circ->next();
+//       } while(circ != *inner_ccb);
+//     }
+//     for(auto outer_ccb = fh->outer_ccbs_begin(); outer_ccb != fh->outer_ccbs_end(); ++outer_ccb) {
+//       std::cout << "  Outer CCB: " << std::endl;
+//       auto circ = *outer_ccb;
+//       do {
+//         std::cout << "    Curve: " << circ->curve() << std::endl;
+//         circ = circ->next();
+//       } while(circ != *outer_ccb);
+//     }
+//   }
+
+//   CGAL::draw_viewer(arr);
 // }
 
 // void draw_segments_arr_2() {
@@ -227,62 +260,94 @@
 //   CGAL::draw_viewer(arr);
 // }
 
-void draw_linear_arr_2() {
-  using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
-  using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
-  using Point_2 = Traits::Point_2;
-  using Line_2 = Traits::Line_2;
-  using Segment_2 = Traits::Segment_2;
-  using Ray_2 = Traits::Ray_2;
-  using Curve_2 = Traits::Curve_2;
-  using Arrangement = CGAL::Arrangement_2<Traits>;
-  using Face_const_handle = Arrangement::Face_const_handle;
-  using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
-  using X_monotone_curve_2 = Traits::X_monotone_curve_2;
+// void draw_linear_arr_2() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
+//   using Point_2 = Traits::Point_2;
+//   using Line_2 = Traits::Line_2;
+//   using Segment_2 = Traits::Segment_2;
+//   using Ray_2 = Traits::Ray_2;
+//   using Curve_2 = Traits::Curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
+//   using Face_const_handle = Arrangement::Face_const_handle;
+//   using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
+//   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
 
-  Arrangement arr;
-  auto& traits = *arr.traits();
-  // Insert a n*n grid, each cell is a square of size 5
-  int n = 5;
-  for(int i = 0; i < n; ++i) {
-    Point_2 p1(i * 5, 0);
-    Point_2 p2(i * 5, 1);
-    CGAL::insert(arr, Curve_2(Line_2(p1, p2)));
-  }
-  for(int i = 0; i < n; ++i) {
-    Point_2 p1(0, i * 5);
-    Point_2 p2(1, i * 5);
-    CGAL::insert(arr, Curve_2(Line_2(p1, p2)));
-  }
-  // Generate a inner square(2*2) for all cells
-  // And an inner triangle for each square
-  for(int i = 0; i < n; ++i) {
-    for(int j = 0; j < n; ++j) {
-      Point_2 p1(i * 5 + 1, j * 5 + 1);
-      Point_2 p2(i * 5 + 4, j * 5 + 4);
-      CGAL::insert(arr, Curve_2(Segment_2(p1, Point_2(p2.x(), p1.y()))));
-      CGAL::insert(arr, Curve_2(Segment_2(Point_2(p1.x(), p2.y()), p2)));
-      CGAL::insert(arr, Curve_2(Segment_2(p1, Point_2(p1.x(), p2.y()))));
-      CGAL::insert(arr, Curve_2(Segment_2(Point_2(p2.x(), p1.y()), p2)));
+//   Arrangement arr;
+//   auto& traits = *arr.traits();
+//   // Insert a n*n grid, each cell is a square of size 5
+//   int n = 5;
+//   for(int i = 0; i < n; ++i) {
+//     Point_2 p1(i * 5, 0);
+//     Point_2 p2(i * 5, 1);
+//     CGAL::insert(arr, Curve_2(Line_2(p1, p2)));
+//   }
+//   for(int i = 0; i < n; ++i) {
+//     Point_2 p1(0, i * 5);
+//     Point_2 p2(1, i * 5);
+//     CGAL::insert(arr, Curve_2(Line_2(p1, p2)));
+//   }
+//   // Generate a inner square(2*2) for all cells
+//   // And an inner triangle for each square
+//   for(int i = 0; i < n; ++i) {
+//     for(int j = 0; j < n; ++j) {
+//       Point_2 p1(i * 5 + 1, j * 5 + 1);
+//       Point_2 p2(i * 5 + 4, j * 5 + 4);
+//       CGAL::insert(arr, Curve_2(Segment_2(p1, Point_2(p2.x(), p1.y()))));
+//       CGAL::insert(arr, Curve_2(Segment_2(Point_2(p1.x(), p2.y()), p2)));
+//       CGAL::insert(arr, Curve_2(Segment_2(p1, Point_2(p1.x(), p2.y()))));
+//       CGAL::insert(arr, Curve_2(Segment_2(Point_2(p2.x(), p1.y()), p2)));
 
-      // Insert a triangle inside the square
-      Point_2 tri_p1(i * 5 + 2, j * 5 + 2);
-      Point_2 tri_p2(i * 5 + 3, j * 5 + 2);
-      Point_2 tri_p3(i * 5 + 2.5, j * 5 + 3);
-      CGAL::insert(arr, Curve_2(Segment_2(tri_p1, tri_p2)));
-      CGAL::insert(arr, Curve_2(Segment_2(tri_p2, tri_p3)));
-      CGAL::insert(arr, Curve_2(Segment_2(tri_p3, tri_p1)));
+//       // Insert a triangle inside the square
+//       Point_2 tri_p1(i * 5 + 2, j * 5 + 2);
+//       Point_2 tri_p2(i * 5 + 3, j * 5 + 2);
+//       Point_2 tri_p3(i * 5 + 2.5, j * 5 + 3);
+//       CGAL::insert(arr, Curve_2(Segment_2(tri_p1, tri_p2)));
+//       CGAL::insert(arr, Curve_2(Segment_2(tri_p2, tri_p3)));
+//       CGAL::insert(arr, Curve_2(Segment_2(tri_p3, tri_p1)));
 
-      // Connect the triangle to the square
-      Point_2 top(i * 5 + 2.5, j * 5 + 4);
-      CGAL::insert(arr, Curve_2(Segment_2(tri_p1, top)));
-    }
-  }
-  std::cout << "Arrangement has " << arr.number_of_faces() << " faces." << std::endl;
-  CGAL::draw_viewer(arr);
-}
+//       // Connect the triangle to the square
+//       Point_2 top(i * 5 + 2.5, j * 5 + 4);
+//       CGAL::insert(arr, Curve_2(Segment_2(tri_p1, top)));
+//     }
+//   }
+//   std::cout << "Arrangement has " << arr.number_of_faces() << " faces." << std::endl;
+//   CGAL::draw_viewer(arr);
+// }
 
 // void draw_linear_arr_3() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
+//   using Point_2 = Traits::Point_2;
+//   using Line_2 = Traits::Line_2;
+//   using Segment_2 = Traits::Segment_2;
+//   using Ray_2 = Traits::Ray_2;
+//   using Curve_2 = Traits::Curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
+//   using Face_const_handle = Arrangement::Face_const_handle;
+//   using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
+//   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
+
+//   std::vector<Point_2> points{{-5, 5}, {5, 5}, {5, -5}, {-5, -5}};
+
+//   Arrangement arr;
+//   auto& traits = *arr.traits();
+//   std::vector<X_monotone_curve_2> segments;
+//   for(size_t i = 0; i < points.size() - 1; ++i) {
+//     Point_2 p1 = points[i];
+//     Point_2 p2 = points[i + 1];
+//     // create a segment
+//     X_monotone_curve_2 seg = traits.construct_x_monotone_curve_2_object()(p1, p2);
+//     segments.push_back(seg);
+//   }
+
+//   // insert segments into the arrangement
+//   CGAL::insert(arr, segments.begin(), segments.end());
+
+//   CGAL::draw_viewer(arr);
+// }
+
+// void draw_linear_arr_4() {
 //   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
 //   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
 //   using Point_2 = Traits::Point_2;
@@ -321,6 +386,52 @@ void draw_linear_arr_2() {
 
 //   CGAL::draw_viewer(arr);
 // }
+
+// void draw_linear_arr_5() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
+//   using Point_2 = Traits::Point_2;
+//   using Line_2 = Traits::Line_2;
+//   using Segment_2 = Traits::Segment_2;
+//   using Ray_2 = Traits::Ray_2;
+//   using Curve_2 = Traits::Curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
+//   using Face_const_handle = Arrangement::Face_const_handle;
+//   using Halfedge_const_handle = Arrangement::Halfedge_const_iterator;
+//   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
+
+//   std::vector<Point_2> polyline1{{-5, 5}, {5, 5}, {5, -5}, {-5, -5}};
+//   std::vector<Point_2> polyline2{{5, -5}, {5, 5}, {15, 5}, {15, -5}};
+
+//   Arrangement arr;
+//   auto& traits = *arr.traits();
+
+//   auto add_polyline = [&](const std::vector<Point_2>& points) {
+//     std::vector<X_monotone_curve_2> segments;
+//     for(size_t i = 0; i < points.size(); ++i) {
+//       Point_2 p1 = points[i];
+//       Point_2 p2 = points[(i + 1) % points.size()];
+//       // create a segment
+//       X_monotone_curve_2 seg = traits.construct_x_monotone_curve_2_object()(p1, p2);
+//       segments.push_back(seg);
+//     }
+//     CGAL::insert(arr, segments.begin(), segments.end());
+//   };
+
+//   // Add the first polyline
+//   add_polyline(polyline1);
+//   // Add the second polyline
+//   add_polyline(polyline2);
+
+//   // add axis
+//   auto x_axis = X_monotone_curve_2(Ray_2(Point_2(-10, -10), Point_2(-9, -10)));
+//   auto y_axis = X_monotone_curve_2(Ray_2(Point_2(-10, -10), Point_2(-10, -9)));
+//   CGAL::insert(arr, x_axis);
+//   CGAL::insert(arr, y_axis);
+
+//   CGAL::draw_viewer(arr);
+// }
+
 // // supports segments
 // void draw_circle_segs_arr() {
 //   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
@@ -336,33 +447,86 @@ void draw_linear_arr_2() {
 //   CGAL::draw(arr);
 // }
 
-// void draw_conic_arcs_arr() {
-//   using Nt_traits = CGAL::CORE_algebraic_number_traits;
-//   using Rational = Nt_traits::Rational;
-//   using Rat_kernel = CGAL::Cartesian<Rational>;
-//   using Rat_point = Rat_kernel::Point_2;
-//   using Rat_segment = Rat_kernel::Segment_2;
-//   using Rat_circle = Rat_kernel::Circle_2;
-//   using Algebraic = Nt_traits::Algebraic;
-//   using Alg_kernel = CGAL::Cartesian<Algebraic>;
-//   using Traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
-//   using Point = Traits::Point_2;
-//   using Conic_arc = Traits::Curve_2;
-//   using X_monotone_conic_arc = Traits::X_monotone_curve_2;
-//   using Arrangement = CGAL::Arrangement_2<Traits>;
+void draw_conic_arcs_arr() {
+  using Nt_traits = CGAL::CORE_algebraic_number_traits;
+  using Rational = Nt_traits::Rational;
+  using Rat_kernel = CGAL::Cartesian<Rational>;
+  using Rat_point = Rat_kernel::Point_2;
+  using Rat_segment = Rat_kernel::Segment_2;
+  using Rat_circle = Rat_kernel::Circle_2;
+  using Algebraic = Nt_traits::Algebraic;
+  using Alg_kernel = CGAL::Cartesian<Algebraic>;
+  using Traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
+  using Point = Traits::Point_2;
+  using Conic_arc = Traits::Curve_2;
+  using X_monotone_conic_arc = Traits::X_monotone_curve_2;
+  using Arrangement = CGAL::Arrangement_2<Traits>;
 
-//   Arrangement arr;
-//   auto traits = Traits();
-//   auto cst_x_curve = traits.construct_curve_2_object();
+  Arrangement arr;
+  auto traits = Traits();
+  auto ctr_cv = traits.construct_curve_2_object();
 
-//   auto vert_seg = cst_x_curve(Rat_segment(Rat_point(0, 0), Rat_point(1, 0)));
-//   auto hor_seg = cst_x_curve(Rat_segment(Rat_point(0, 0), Rat_point(0, 1)));
+  // Insert a hyperbolic arc (C1), supported by the hyperbola y = 1/x
+  // (or: xy - 1 = 0) with the endpoints (1/4, 4) and (2, 1/2).
+  // The arc is counterclockwise oriented.
+  CGAL::insert(arr,
+               ctr_cv(0, 0, 1, 0, 0, -1, CGAL::COUNTERCLOCKWISE, Point(Rational(1, 4), 4), Point(2, Rational(1, 2))));
 
-//   CGAL::insert(arr, vert_seg);
-//   CGAL::insert(arr, hor_seg);
+  // Insert a full ellipse (C2), which is (x/4)^2 + (y/2)^2 = 0 rotated by
+  // phi = 36.87 degrees (such that sin(phi) = 0.6, cos(phi) = 0.8),
+  // yielding: 58x^2 + 72y^2 - 48xy - 360 = 0.
+  CGAL::insert(arr, ctr_cv(58, 72, -48, 0, 0, -360));
 
-//   CGAL::draw(arr);
-// }
+  // Insert the segment (C3) (1, 1) -- (0, -3).
+  CGAL::insert(arr, ctr_cv(Rat_segment(Rat_point(1, 1), Rat_point(0, -3))));
+
+  // Insert a circular arc (C4) supported by the circle x^2 + y^2 = 5^2,
+  // with (-3, 4) and (4, 3) as its endpoints. We want the arc to be
+  // clockwise-oriented, so it passes through (0, 5) as well.
+  CGAL::insert(arr, ctr_cv(Rat_point(-3, 4), Rat_point(0, 5), Rat_point(4, 3)));
+
+  // Insert a full unit circle (C5) that is centered at (0, 4).
+  CGAL::insert(arr, ctr_cv(Rat_circle(Rat_point(0, 4), 1)));
+
+  // Insert a parabolic arc (C6) supported by the parabola y = -x^2 with
+  // endpoints (-sqrt(3),-3) (~(-1.73,-3)) and (sqrt(2),-2) (~(1.41,-2)).
+  // Since the x-coordinates of the endpoints cannot be accurately represented,
+  // we specify them as the intersections of the parabola with the lines
+  // y = -3 and y = -2, respectively. The arc is clockwise-oriented.
+  Conic_arc c6 = ctr_cv(1, 0, 0, 0, 1, 0, CGAL::CLOCKWISE, // The parabola.
+                        Point(-1.73, -3),                  // approximation of the source.
+                        0, 0, 0, 0, 1, 3,                  // the line: y = -3.
+                        Point(1.41, -2),                   // approximation of the target.
+                        0, 0, 0, 0, 1, 2);                 // the line: y = -2.
+  CGAL::insert(arr, c6);
+
+  // Insert the right half of the circle centered at (4, 2.5) whose radius
+  // is 1/2 (therefore its squared radius is 1/4) (C7).
+  Rat_circle circ7(Rat_point(4, Rational(5, 2)), Rational(1, 4));
+  CGAL::insert(arr, ctr_cv(circ7, CGAL::CLOCKWISE, Point(4, 3), Point(4, 2)));
+
+  for(auto fh : arr.face_handles()) {
+    std::cout << "Face: is unbounded = " << fh->is_unbounded() << std::endl;
+    for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
+      std::cout << "  Inner CCB: " << std::endl;
+      auto circ = *inner_ccb;
+      do {
+        std::cout << "    Curve: " << circ->curve() << std::endl;
+        circ = circ->next();
+      } while(circ != *inner_ccb);
+    }
+    for(auto outer_ccb = fh->outer_ccbs_begin(); outer_ccb != fh->outer_ccbs_end(); ++outer_ccb) {
+      std::cout << "  Outer CCB: " << std::endl;
+      auto circ = *outer_ccb;
+      do {
+        std::cout << "    Curve: " << circ->curve() << std::endl;
+        circ = circ->next();
+      } while(circ != *outer_ccb);
+    }
+  }
+
+  CGAL::draw_viewer(arr);
+}
 
 // void draw_algebraic_arr() {
 // #if CGAL_USE_GMP && CGAL_USE_MPFI
@@ -432,21 +596,22 @@ void draw_linear_arr_2() {
 
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Point = Kernel::Point_2;
-// void write_polyline(std::string filename, const std::vector<Point>& points) {
-//   std::ofstream ofs_index("/Users/shep/codes/aos_2_js_helper/shapes.txt");
-//   ofs_index << filename << std::endl;
-//   std::ofstream ofs("/Users/shep/codes/aos_2_js_helper/" + filename);
-//   for(const auto& pt : points) {
-//     ofs << pt << "\n";
-//   }
-//   ofs << std::endl;
-// }
 
 int main() {
+  // draw_segments_arr_1();
+  // draw_segments_arr_2();
+  // draw_segments_arr_3();
+  // draw_segments_arr_4();
+  // draw_segments_arr_5();
   // draw_segments_arr_6();
-  draw_linear_arr_2();
+  // draw_segments_arr_6();
+  // draw_linear_arr_1();
+  // draw_linear_arr_2();
+  // draw_linear_arr_3();
+  // draw_linear_arr_4();
+  // draw_linear_arr_5();
   // test_zone();
-  // draw_conic_arcs_arr();
+  draw_conic_arcs_arr();
   // draw_algebraic_arr();
   // draw_rational_arr();
   // draw_circle_segs_arr();

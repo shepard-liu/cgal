@@ -3,10 +3,11 @@
 
 #include "CGAL/Arr_has.h"
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/number_utils.h"
 
 namespace CGAL {
-
+namespace draw_aos {
 namespace internal {
 
 template <typename Geom_traits, bool Has_approximate_2>
@@ -16,7 +17,7 @@ template <typename Geom_traits>
 class Arr_approximate_point_2_impl<Geom_traits, true>
 {
   using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Geom_traits::Point_2;
+  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
 public:
@@ -54,7 +55,7 @@ class Arr_approximate_point_2_impl<Geom_traits, false>
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
 public:
-  // traits object  is not used in the fallback implementation, but we keep it for consistency.
+  // traits object is not used in the fallback implementation, but we keep it for consistency.
   Arr_approximate_point_2_impl(const Geom_traits& traits) {}
 
   /**
@@ -92,6 +93,7 @@ template <typename Geom_traits>
 using Arr_approximate_point_2 =
     internal::Arr_approximate_point_2_impl<Geom_traits, has_approximate_2<Geom_traits>::value>;
 
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif // CGAL_DRAW_AOS_ARR_APPROXIMATE_POINT_2_H

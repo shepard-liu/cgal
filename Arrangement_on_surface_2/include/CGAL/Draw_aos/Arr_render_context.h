@@ -7,6 +7,8 @@
 #include "CGAL/Draw_aos/Arr_approximation_cache.h"
 #include "CGAL/Draw_aos/Arr_construct_curve_end.h"
 #include "CGAL/Draw_aos/Arr_construct_segments.h"
+#include "CGAL/Draw_aos/Arr_portals.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -14,11 +16,11 @@
 #include <CGAL/Draw_aos/helpers.h>
 #include <cstdlib>
 #include <fstream>
-#include <iterator>
 #include <limits>
 #include <memory>
 
 namespace CGAL {
+namespace draw_aos {
 
 class Arr_cancellable_context_mixin
 {
@@ -55,10 +57,6 @@ class Arr_bounds_context_mixin
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
 protected:
-  Arr_bounds_context_mixin(const Bbox_2& bbox)
-      : m_bbox(bbox) {}
-
-public:
   enum class Side_of_boundary {
     Left,
     Right,
@@ -67,6 +65,10 @@ public:
     None,
   };
 
+  Arr_bounds_context_mixin(const Bbox_2& bbox)
+      : m_bbox(bbox) {}
+
+public:
   double xmin() const { return m_bbox.xmin(); }
   double xmax() const { return m_bbox.xmax(); }
   double ymin() const { return m_bbox.ymin(); }
@@ -145,22 +147,27 @@ public:
   const Arr_construct_curve_end<Geom_traits> cst_curve_end;
   const Arr_construct_vertical_segment cst_vertical_segment;
   const Arr_construct_horizontal_segment cst_horizontal_segment;
-  const Geom_traits::Intersect_2 intersect_2;
-  const Geom_traits::Compare_xy_2 compare_xy_2;
-  const Geom_traits::Is_vertical_2 is_vertical_2;
+  const Type_traits<Geom_traits>::Intersect_2 intersect_2;
+  const Type_traits<Geom_traits>::Compare_xy_2 compare_xy_2;
+  const Type_traits<Geom_traits>::Is_vertical_2 is_vertical_2;
   const Arr_approximate_point_2<Geom_traits> approx_pt;
 };
 
 class Arr_render_context : public Arr_cancellable_context_mixin, public Arr_geom_traits_context_mixin
 {
   using Point_location = Arr_trapezoid_ric_point_location<Arrangement>;
+  using Feature_portals_map = Arr_portals::Feature_portals_map;
 
 public:
-  Arr_render_context(const Arrangement& arr, const Point_location& pl, double approx_error)
+  Arr_render_context(const Arrangement& arr,
+                     const Point_location& pl,
+                     const Feature_portals_map& feature_portals,
+                     double approx_error)
       : Arr_cancellable_context_mixin()
       , Arr_geom_traits_context_mixin(*arr.traits())
       , arr(arr)
       , point_location(pl)
+      , feature_portals(feature_portals)
       , counter(std::make_shared<std::size_t>(0)) // TODO: remove this after debugging
       , approx_error(approx_error) {}
 
@@ -169,15 +176,19 @@ public:
   const Arrangement& arr;
   std::shared_ptr<std::size_t> counter; // TODO: remove this after debugging
   const Point_location& point_location;
+  const Feature_portals_map& feature_portals;
 };
 
 class Arr_bounded_render_context : public Arr_render_context, public Arr_bounds_context_mixin
 {
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
   using Point_2 = Geom_traits::Point_2;
+
   constexpr static double ep_base = std::numeric_limits<double>::epsilon();
 
 public:
+  using Side_of_boundary = Arr_bounds_context_mixin::Side_of_boundary;
+
   Arr_bounded_render_context(const Arr_render_context& ctx, const Bbox_2& bbox, Arr_approximation_cache& cache)
       : Arr_render_context(ctx)
       , ep_xmin(std::max(std::abs(ep_base * bbox.xmin()), ep_base))
@@ -236,5 +247,6 @@ private:
   const Context& m_ctx;
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_RENDER_CONTEXT_H

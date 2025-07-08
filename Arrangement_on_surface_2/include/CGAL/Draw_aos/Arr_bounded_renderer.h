@@ -14,6 +14,8 @@
 #include <vector>
 
 namespace CGAL {
+namespace draw_aos {
+
 /**
  * @brief Render arrangement on surface within a bounding box.
  *
@@ -79,32 +81,27 @@ class Arr_bounded_renderer
   };
 
 private:
-  template <typename OutputIterator>
-  static void locate_intersecting_features(const Execution_context& ctx,
-                                           const X_monotone_curve_2& curve,
-                                           OutputIterator out_iter,
-                                           Arr_flags<Feature_type> feats) {
+  static void
+  approx_intersecting_features(Execution_context& ctx, const X_monotone_curve_2& curve, Arr_flags<Feature_type> feats) {
     using Feature = std::variant<Vertex_handle, Halfedge_handle, Face_handle>;
     using Feature_vector = std::vector<Feature>;
 
-    auto func_out_iter = boost::make_function_output_iterator([&out_iter, &feats](const Feature& feature) {
+    auto func_out_iter = boost::make_function_output_iterator([&ctx, &feats](const Feature& feature) {
       if(auto* vh = std::get_if<Vertex_handle>(&feature)) {
         if(!feats.is_set(Feature_type::Vertex) || (*vh)->is_at_open_boundary()) {
           return;
         }
-        *out_iter++ = Vertex_const_handle(*vh);
+        ctx.bounded_approx_pt(*vh);
       } else if(auto* he = std::get_if<Halfedge_handle>(&feature)) {
         if(!feats.is_set(Feature_type::Halfedge) || (*he)->is_fictitious()) {
           return;
         }
-        *out_iter++ = Halfedge_const_handle(*he);
+        ctx.bounded_approx_curve(*he);
       } else if(auto* fh = std::get_if<Face_handle>(&feature)) {
         if(!feats.is_set(Feature_type::Face)) {
           return;
         }
-        *out_iter++ = Face_const_handle(*fh);
-      } else {
-        CGAL_assertion(false && "Unexpected feature type");
+        discover_faces(ctx, *fh);
       }
     });
 
@@ -126,14 +123,14 @@ private:
     ctx.bounded_approx_face(fh);
 
     for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
-      auto he = *inner_ccb;
-      auto inner_face = he->twin()->face();
+      auto circ = *inner_ccb;
 
-      if(inner_face == fh || !ctx->strictly_contains(inner_face->outer_ccb()->source()->point())) {
-        continue;
-      }
-
-      discover_faces(ctx, inner_face);
+      do {
+        auto inner_face = circ->twin()->face();
+        if(inner_face != fh && ctx->strictly_contains(circ->source()->point())) {
+          discover_faces(ctx, inner_face);
+        }
+      } while(++circ != *inner_ccb);
     }
 
     // We don't need to handle isolated vertices.
@@ -153,8 +150,7 @@ private:
         continue;
       }
 
-      bool within_bounds = ctx->strictly_contains(adj_face->outer_ccb()->source()->point());
-      if(!within_bounds) {
+      if(!ctx->strictly_contains(adj_face->outer_ccb()->source()->point())) {
         continue;
       }
       // For a face that is not one of the seeding faces,
@@ -171,6 +167,9 @@ public:
 
   Arr_approximation_cache render() const {
     Arr_approximation_cache cache;
+    cache.reserve_face_cache(m_ctx.arr.number_of_faces());
+    cache.reserve_halfedge_cache(m_ctx.arr.number_of_halfedges());
+    cache.reserve_vertex_cache(m_ctx.arr.number_of_vertices());
 
     if(m_ctx.is_cancelled()) {
       return cache;
@@ -178,29 +177,16 @@ public:
 
     Execution_context ctx(Arr_bounded_render_context(m_ctx, m_bbox, cache));
 
-    auto insert_features = boost::make_function_output_iterator([&ctx](const Feature_const& feature) {
-      if(auto* vh = std::get_if<Vertex_const_handle>(&feature)) {
-        ctx.bounded_approx_pt(*vh);
-      } else if(auto* he = std::get_if<Halfedge_const_handle>(&feature)) {
-        ctx.bounded_approx_curve(*he);
-      } else if(auto* fh = std::get_if<Face_const_handle>(&feature)) {
-        discover_faces(ctx, *fh);
-      } else {
-        CGAL_assertion(false && "Unexpected feature type");
-      }
-    });
-
     auto top = ctx->cst_horizontal_segment(ctx->ymax(), ctx->xmin(), ctx->xmax());
     auto bottom = ctx->cst_horizontal_segment(ctx->ymin(), ctx->xmin(), ctx->xmax());
     auto left = ctx->cst_vertical_segment(ctx->xmin(), ctx->ymin(), ctx->ymax());
     auto right = ctx->cst_vertical_segment(ctx->xmax(), ctx->ymin(), ctx->ymax());
 
     // top, left are open edges while bottom, right are closed.
-    locate_intersecting_features(ctx, top, insert_features, Feature_type::Face);
-    locate_intersecting_features(ctx, left, insert_features, Feature_type::Face);
-    locate_intersecting_features(ctx, bottom, insert_features, {Feature_type::Face, Feature_type::Halfedge});
-    locate_intersecting_features(ctx, right, insert_features,
-                                 {Feature_type::Face, Feature_type::Halfedge, Feature_type::Vertex});
+    approx_intersecting_features(ctx, top, Feature_type::Face);
+    approx_intersecting_features(ctx, left, Feature_type::Face);
+    approx_intersecting_features(ctx, bottom, {Feature_type::Face, Feature_type::Halfedge});
+    approx_intersecting_features(ctx, right, {Feature_type::Face, Feature_type::Halfedge, Feature_type::Vertex});
 
     return cache;
   }
@@ -210,6 +196,7 @@ private:
   const Bbox_2 m_bbox;
 };
 
+} // namespace draw_aos
 } // namespace CGAL
 
 #endif // CGAL_DRAW_AOS_ARR_BOUNDED_RENDERER_H

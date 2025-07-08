@@ -14,14 +14,13 @@
 #include <boost/iterator/function_output_iterator.hpp>
 #include <cstddef>
 #include <functional>
-#include <iostream>
-#include <iterator>
 #include <optional>
 #include <type_traits>
+#include <variant>
 
 namespace CGAL {
 
-namespace internal {
+namespace draw_aos {
 /**
  * @brief Patches corners between two boundary points of the bbox
  * counter-clockwisely.
@@ -30,6 +29,7 @@ class Patch_boundary
 {
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
+  // We have different definition compared to the one in Arr_bounds_context_mixin
   enum class Side_of_boundary {
     Top = 0,
     Left = 1,
@@ -39,7 +39,7 @@ class Patch_boundary
   };
 
 private:
-  Side_of_boundary side_of_boundary(const Approx_point& pt) const {
+  Side_of_boundary side_of_boundary(Approx_point pt) const {
     if(m_bbox.xmin() <= pt.x() && pt.x() < m_bbox.xmax() && pt.y() == m_bbox.ymax()) {
       return Side_of_boundary::Top;
     } else if(pt.x() == m_bbox.xmin() && m_bbox.ymin() <= pt.y() && pt.y() < m_bbox.ymax()) {
@@ -83,9 +83,8 @@ private:
     return static_cast<Side_of_boundary>((static_cast<int>(side) + 1) % 4);
   }
 
-  bool is_on_boundary(const Approx_point& pt) const { return side_of_boundary(pt) != Side_of_boundary::None; }
-
-  double distance_on_same_side(const Approx_point& pt1, const Approx_point& pt2) const {
+  // Computes the distance between two points with the precondition that they are on the same side of the boundary.
+  double distance_on_same_side(Approx_point pt1, Approx_point pt2) const {
     return std::abs(pt1.x() - pt2.x()) + std::abs(pt1.y() - pt2.y());
   }
 
@@ -93,8 +92,11 @@ public:
   Patch_boundary(Bbox_2 bbox)
       : m_bbox(bbox) {}
 
+  /**
+   * @brief Patch the boundary between two points on the boundary of the bbox counter-clockwisely.
+   */
   template <typename OutputIterator>
-  void operator()(const Approx_point& from, const Approx_point& to, OutputIterator out_it) const {
+  void operator()(Approx_point from, Approx_point to, OutputIterator out_it) const {
     auto from_side = side_of_boundary(from);
     auto to_side = side_of_boundary(to);
 
@@ -117,9 +119,19 @@ public:
         continue;
       }
       *out_it++ = corner;
-      std::cout << "Patching corner: " << corner << std::endl;
     }
     return;
+  }
+
+  /**
+   * @brief Patch all four sides.
+   */
+  template <typename OutputIterator>
+  void operator()(OutputIterator out_it) const {
+    for(auto side : {Side_of_boundary::Top, Side_of_boundary::Left, Side_of_boundary::Bottom, Side_of_boundary::Right})
+    {
+      *out_it++ = corner_of_side(side);
+    }
   }
 
 private:
@@ -127,11 +139,18 @@ private:
 };
 
 template <typename OutputIterator>
-class Geom_simplifier
+class Colinear_simplifier
 {
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
-private:
+public:
+  using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point)>>;
+
+public:
+  Colinear_simplifier(OutputIterator out_it, Bbox_2 bbox)
+      : m_out_it(out_it)
+      , m_bbox(bbox) {}
+
   void dump() {
     if(m_start.has_value()) {
       *m_out_it++ = m_start.value();
@@ -143,17 +162,9 @@ private:
     }
   }
 
-public:
-  Geom_simplifier(OutputIterator& out_it, const Bbox_2& bbox)
-      : m_out_it(out_it)
-      , m_bbox(bbox) {}
-
-  decltype(auto) insert_iterator() {
-    return boost::make_function_output_iterator([this](const Approx_point& p) {
+  Insert_iterator insert_iterator() {
+    return boost::make_function_output_iterator(std::function([this](Approx_point p) {
       if(m_mid.has_value()) {
-        if(m_mid.value() == p) {
-          return;
-        }
         if(p.y() == m_mid->y() && p.y() == m_start->y() || p.x() == m_mid->x() && p.x() == m_start->x()) {
           // Three points are collinear horizontally or vertically.
           m_mid = p;
@@ -166,25 +177,20 @@ public:
       }
 
       if(m_start.has_value()) {
-        if(m_start.value() == p) {
-          return;
-        }
         m_mid = p;
       } else {
         m_start = p;
       }
-    });
+    }));
   }
 
-  ~Geom_simplifier() { dump(); }
+  ~Colinear_simplifier() { dump(); }
 
 private:
-  OutputIterator& m_out_it;
+  OutputIterator m_out_it;
   std::optional<Approx_point> m_start, m_mid;
-  Bbox_2 m_bbox;
+  const Bbox_2 m_bbox;
 };
-
-} // namespace internal
 
 /**
  * @brief Bounded face approximation for arrangements.
@@ -200,10 +206,10 @@ class Arr_bounded_approximate_face_2
   using Ccb_halfedge_const_circulator = Arrangement::Ccb_halfedge_const_circulator;
   using Approx_point = Approx_geom_traits::Approx_point;
   using Triangulated_face = Approx_geom_traits::Triangulated_face;
-  using Patch_boundary = internal::Patch_boundary;
-
-  template <typename OutputIterator>
-  using Geom_simplifier = internal::Geom_simplifier<OutputIterator>;
+  using Feature_portal_map = Arr_portals::Feature_portals_map;
+  using Portal_vector = Arr_portals::Portal_vector;
+  using Portal = Arr_portals::Portal;
+  using Point_or_portal = std::variant<Approx_point, Portal>;
 
   struct Left_to_right_tag
   {};
@@ -213,116 +219,198 @@ class Arr_bounded_approximate_face_2
 private:
   class Execution_context : public Arr_context_delegator<Arr_bounded_render_context>
   {
+  private:
+    using Output_iterator = Colinear_simplifier<Arr_bounded_face_triangulator::Insert_iterator>::Insert_iterator;
+
   public:
+    using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point pt)>>;
+
     Execution_context(const Arr_bounded_render_context& ctx,
-                      Arr_bounded_face_triangulator& triangulator,
                       const Patch_boundary& patch_boundary,
+                      Output_iterator out_it,
                       const Arr_bounded_approximate_point_2& bounded_approx_pt,
                       const Arr_bounded_approximate_curve_2& bounded_approx_curve)
         : Arr_context_delegator(ctx)
-        , triangulator(triangulator)
+        , base_out_it(out_it)
         , patch_boundary(patch_boundary)
         , bounded_approx_pt(bounded_approx_pt)
-        , bounded_approx_curve(bounded_approx_curve) {}
+        , bounded_approx_curve(bounded_approx_curve) {
+      this->out_it = boost::make_function_output_iterator(std::function([this](Approx_point pt) {
+        if(!(*this)->contains_x(pt.x())) {
+          return;
+        }
+
+        pt = Approx_point(pt.x(), std::clamp(pt.y(), (*this)->ymin(), (*this)->ymax()));
+        if(pt == last_pt) {
+          passed_fictitious_edge = false;
+          return;
+        }
+
+        if(passed_fictitious_edge && last_pt.has_value()) {
+          this->patch_boundary(last_pt.value(), pt, base_out_it);
+        }
+        passed_fictitious_edge = false;
+
+        *base_out_it++ = pt;
+
+        if(!first_pt.has_value()) {
+          first_pt = pt;
+        }
+        last_pt = pt;
+      }));
+    }
+    // Let's not accidentally copy this object.
+    Execution_context(const Execution_context&) = delete;
+    Execution_context& operator=(const Execution_context&) = delete;
 
   public:
     const Arr_bounded_approximate_point_2& bounded_approx_pt;
     const Arr_bounded_approximate_curve_2& bounded_approx_curve;
-    Arr_bounded_face_triangulator& triangulator;
+    Insert_iterator out_it;
+    std::optional<Approx_point> last_pt, first_pt;
+    bool passed_fictitious_edge{false};
+    Output_iterator base_out_it;
     const Patch_boundary& patch_boundary;
   };
 
 private:
+  /**
+   * @brief Get the first halfedge on the inner ccb that should be traversed.
+   *
+   * @precondition: The vertex must not be isolated.
+   * @param vh
+   */
+  static Halfedge_const_handle get_inner_ccb_first_halfedge(const Vertex_const_handle& vh) {
+    auto circ = vh->incident_halfedges();
+    if(vh->degree() == 1) {
+      return circ->twin();
+    }
+    auto curr = circ;
+    auto next = curr;
+    ++next;
+    // Traverse the halfedges incident to the vertex in clockwise direction.
+    // Note that circulator around a vertex points to a halfedge whose target is the vertex.
+    do {
+      if(curr->direction() == ARR_LEFT_TO_RIGHT && next->direction() == ARR_RIGHT_TO_LEFT) {
+        // This indicates that "curr" crosses 12 o'clock and reaches "next".
+        break;
+      }
+      ++curr;
+      ++next;
+    } while(curr != circ);
+
+    return next->twin();
+  }
+
   static void approximate_vertex(Execution_context& ctx, const Vertex_const_handle& vh) {
     if(vh->is_at_open_boundary()) {
       return;
     }
     ctx.bounded_approx_pt(vh);
-  }
 
-  template <typename OutputIterator>
-  static void
-  approximate_halfedge_of_ccb(Execution_context& ctx, const Halfedge_const_handle& he, OutputIterator& out_it) {
-    if(he->is_fictitious()) {
+    auto portals_it = ctx->feature_portals.find(vh);
+    if(portals_it == ctx->feature_portals.end()) {
       return;
     }
+    const auto& portals = portals_it->second;
+    if(portals.empty()) {
+      return;
+    }
+    CGAL_assertion_msg(portals.size() == 1, "Vertex should have at most one portal.");
+    traverse_portal(ctx, portals.front());
+  }
 
-    const Polyline_geom& polyline = ctx.bounded_approx_curve(he);
-    if(he->direction() == ARR_LEFT_TO_RIGHT) {
-      std::copy(polyline.begin(), polyline.end(), out_it);
+  template <typename DirectionTag>
+  static void approximate_halfedge(Execution_context& ctx, const Halfedge_const_handle& he, DirectionTag dir_tag) {
+    constexpr bool Is_left_to_right = std::is_same_v<DirectionTag, Left_to_right_tag>;
+    using Approx_point_it = std::conditional_t<Is_left_to_right, typename Polyline_geom::const_iterator,
+                                               typename Polyline_geom::const_reverse_iterator>;
+    using Portals_it = std::conditional_t<Is_left_to_right, typename Portal_vector::const_iterator,
+                                          typename Portal_vector::const_reverse_iterator>;
+
+    const Polyline_geom& polyline = he->is_fictitious() ? Polyline_geom{} : ctx.bounded_approx_curve(he);
+    auto portal_map_it = ctx->feature_portals.find(he);
+    const Portal_vector& portals =
+        portal_map_it != ctx->feature_portals.end() ? portal_map_it->second : Portal_vector{};
+
+    Approx_point_it points_iter, points_end;
+    Portals_it portals_iter, portals_end;
+    if constexpr(Is_left_to_right) {
+      points_iter = polyline.begin();
+      points_end = polyline.end();
+      portals_iter = portals.begin();
+      portals_end = portals.end();
     } else {
-      std::copy(polyline.rbegin(), polyline.rend(), out_it);
+      points_iter = polyline.rbegin();
+      points_end = polyline.rend();
+      portals_iter = portals.rbegin();
+      portals_end = portals.rend();
+    }
+
+    std::merge(points_iter, points_end, portals_iter, portals_end,
+               boost::make_function_output_iterator([&ctx](const Point_or_portal& point_or_portal) {
+                 if(auto* portal = std::get_if<Portal>(&point_or_portal)) {
+                   traverse_portal(ctx, *portal);
+                   return;
+                 }
+                 *ctx.out_it++ = std::get<Approx_point>(point_or_portal);
+               }),
+               [](const Portal& portal, const Approx_point& pt) {
+                 return Is_left_to_right ? portal.second->point().x() < pt.x() : portal.second->point().x() > pt.x();
+               });
+  }
+
+  static void approximate_inner_ccb(Execution_context& ctx, const Vertex_const_handle& vh) {
+    if(vh->is_isolated()) {
+      approximate_vertex(ctx, vh);
+      return;
+    }
+    approximate_ccb<Inner_ccb_tag>(ctx, get_inner_ccb_first_halfedge(vh));
+  }
+
+  static void traverse_portal(Execution_context& ctx, const Portal& portal) { // We have a portal.
+    const auto& [source, dest] = portal;
+    Approx_point dest_pt = ctx->approx_pt(dest->point());
+    Approx_point source_pt = source.has_value() ? source.value() : Approx_point(dest_pt.x(), ctx->ymax());
+
+    *ctx.out_it++ = source_pt;
+    approximate_inner_ccb(ctx, dest);
+    // We come back here after inner ccb is approximated.
+    *ctx.out_it++ = source_pt;
+
+    if(!source.has_value()) {
+      ctx.passed_fictitious_edge = true;
     }
   }
 
-  template <typename CcbTag, bool Bounded = true>
+  template <typename CcbTag, bool Unbounded = false>
   static void approximate_ccb(Execution_context& ctx, Ccb_halfedge_const_circulator start_circ) {
     constexpr bool Is_outer_ccb = std::is_same_v<CcbTag, Outer_ccb_tag>;
-    static_assert(Is_outer_ccb || Bounded, "Inner CCBs are impossible to be unbounded.");
+    static_assert(Is_outer_ccb || !Unbounded, "Inner CCBs are impossible to be unbounded.");
 
     // For unbound ccb, we start on a fictitious edge
-    if constexpr(!Bounded) {
+    if constexpr(Unbounded) {
       while(!start_circ->is_fictitious()) {
         ++start_circ;
       }
     }
 
-    auto ccb_constraint = ctx.triangulator.make_ccb_constraint<CcbTag>();
-    auto constraint_out_it = ccb_constraint.insert_iterator();
-
-    auto simplifier = Geom_simplifier(constraint_out_it, ctx->bbox());
-    auto simplifier_out_it = simplifier.insert_iterator();
-
     auto circ = start_circ;
-    std::optional<Approx_point> last_pt;
-
-    // These vars are used only in unbounded ccb.
-    std::optional<Approx_point> first_pt;
-    bool passed_fictitious_edge = false;
-
-    auto he_process_out_it = boost::make_function_output_iterator([&](const Approx_point& pt) {
-      Approx_point regulated_pt(pt.x(), std::clamp(pt.y(), ctx->ymin(), ctx->ymax()));
-      if(last_pt == regulated_pt) {
-        return;
-      }
-
-      *simplifier_out_it++ = regulated_pt;
-
-      if constexpr(!Bounded) {
-        // TODO: nesting too deep and looks ugly
-        if(passed_fictitious_edge) {
-          passed_fictitious_edge = false;
-          if(last_pt.has_value()) {
-            ctx.patch_boundary(last_pt.value(), regulated_pt, simplifier_out_it);
-          }
-        }
-        if(!first_pt.has_value()) {
-          first_pt = regulated_pt;
-        }
-      }
-
-      last_pt = regulated_pt;
-    });
-
     do {
-      if constexpr(!Bounded) {
-        if(circ->is_fictitious()) {
-          passed_fictitious_edge = true;
-        }
+      if(circ->is_fictitious()) {
+        ctx.passed_fictitious_edge = true;
       }
-      approximate_halfedge_of_ccb(ctx, circ, he_process_out_it);
+
+      circ->direction() == ARR_LEFT_TO_RIGHT ? approximate_halfedge(ctx, circ, Left_to_right_tag{})
+                                             : approximate_halfedge(ctx, circ, Right_to_left_tag{});
       approximate_vertex(ctx, circ->target());
     } while(++circ != start_circ);
 
-    if constexpr(!Bounded) {
-      if(!first_pt.has_value()) {
-        *simplifier_out_it++ = Approx_point(ctx->xmin(), ctx->ymin());
-        *simplifier_out_it++ = Approx_point(ctx->xmin(), ctx->ymax());
-        *simplifier_out_it++ = Approx_point(ctx->xmax(), ctx->ymax());
-        *simplifier_out_it++ = Approx_point(ctx->xmax(), ctx->ymin());
-
+    if constexpr(Unbounded) {
+      if(ctx.first_pt.has_value()) {
+        ctx.patch_boundary(ctx.last_pt.value(), ctx.first_pt.value(), ctx.base_out_it);
       } else {
-        ctx.patch_boundary(last_pt.value(), first_pt.value(), simplifier_out_it);
+        ctx.patch_boundary(ctx.base_out_it);
       }
     }
   }
@@ -346,40 +434,40 @@ public:
       return triangulated_face;
     }
 
-    CGAL_assertion_msg(!fh->is_fictitious(), "Cannot approximate a fictitious face.");
+    CGAL_precondition_msg(!fh->is_fictitious(), "Cannot approximate a fictitious face.");
 
     if(!fh->has_outer_ccb()) {
       // The face is the unbounded face of bounded arrangements, we skip approximating any non degenerate features.
       for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
-        if((*inner_ccb)->twin()->face() != (*inner_ccb)->face()) {
-          continue;
-        }
-        m_curve_approx(*inner_ccb);
+        auto circ = *inner_ccb;
+        do {
+          if(circ->face() != circ->twin()->face()) {
+            // Found non degenerate edge, skip.
+            continue;
+          }
+          m_curve_approx(circ);
+        } while(++circ != *inner_ccb);
       }
-      for(auto isolated_vh = fh->isolated_vertices_begin(); isolated_vh != fh->isolated_vertices_end(); ++isolated_vh) {
-        m_point_approx(isolated_vh);
+      for(auto vh = fh->isolated_vertices_begin(); vh != fh->isolated_vertices_end(); ++vh) {
+        m_point_approx(vh);
       }
+
       return triangulated_face;
     }
 
-    Arr_bounded_face_triangulator triangulator(m_ctx);
-    Execution_context ctx(m_ctx, triangulator, m_patch_boundary, m_point_approx, m_curve_approx);
+    auto triangulator = Arr_bounded_face_triangulator(m_ctx);
+    auto simplifier = Colinear_simplifier(triangulator.insert_iterator(), m_ctx.bbox());
+    auto ctx = Execution_context(m_ctx, m_patch_boundary, simplifier.insert_iterator(), m_point_approx, m_curve_approx);
 
     if(fh->is_unbounded()) {
-      approximate_ccb<Outer_ccb_tag, false>(ctx, fh->outer_ccb());
-    } else {
       approximate_ccb<Outer_ccb_tag, true>(ctx, fh->outer_ccb());
+    } else {
+      approximate_ccb<Outer_ccb_tag, false>(ctx, fh->outer_ccb());
     }
 
-    for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
-      approximate_ccb<Inner_ccb_tag>(ctx, *inner_ccb);
-    }
+    simplifier.dump();
 
-    for(auto isolated_vh = fh->isolated_vertices_begin(); isolated_vh != fh->isolated_vertices_begin(); ++isolated_vh) {
-      approximate_vertex(ctx, isolated_vh);
-    }
-
-    return triangulated_face = (std::move(triangulator));
+    return triangulated_face = std::move(triangulator);
   }
 
 private:
@@ -388,5 +476,6 @@ private:
   const Arr_bounded_approximate_curve_2& m_curve_approx;
   const Patch_boundary m_patch_boundary;
 };
+} // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_2_H
