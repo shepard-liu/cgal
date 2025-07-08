@@ -32,6 +32,7 @@
 #include <CGAL/Basic_viewer.h>
 #include "CGAL/Bbox_2.h"
 #include <CGAL/Draw_aos/helpers.h>
+#include "CGAL/Draw_aos/Arr_approximate_point_2.h"
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
 #include "CGAL/Draw_aos/Arr_bounded_renderer.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
@@ -70,8 +71,10 @@ private:
 
   Bbox_2 initial_bbox() const {
     Bbox_2 bbox;
+    Arr_approximate_point_2<Geom_traits> approx_pt(m_arr.traits());
     for(const auto& vh : m_arr.vertex_handles()) {
-      bbox += vh->point().bbox();
+      auto pt = approx_pt(vh->point());
+      bbox += Bbox_2(pt.x(), pt.y(), pt.x(), pt.y());
     }
     if(bbox.x_span() == 0 || bbox.y_span() == 0) {
       // make a default bbox around the degenrate rect

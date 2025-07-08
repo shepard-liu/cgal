@@ -4,7 +4,6 @@
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/type_utils.h"
 #include <boost/iterator/function_output_iterator.hpp>
-#include <limits>
 
 namespace CGAL {
 namespace draw_aos {

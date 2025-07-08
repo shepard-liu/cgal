@@ -51,7 +51,14 @@ class Arr_bounded_face_triangulator
   using Ct = Constrained_triangulation_2<Epick, Tds, Exact_predicates_tag>;
   using KPoint = Epick::Point_2;
   using KPoint_with_info = std::pair<KPoint, Point_index>;
-  using Side_of_boundary = Arr_bounded_render_context::Side_of_boundary;
+
+  enum class Side_of_boundary {
+    Left,
+    Right,
+    Bottom,
+    Top,
+    None,
+  };
 
 public:
   using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point)>>;
@@ -106,12 +113,31 @@ private:
     m_ct.insert_with_info<KPoint_with_info>(transformed_begin, transformed_end);
   }
 
+  Side_of_boundary shared_boundary_side(const Approx_point& pt1, const Approx_point& pt2) const {
+    if(pt1.x() == m_ctx.xmin() && pt2.x() == m_ctx.xmin() && m_ctx.contains_y(pt1.y()) && m_ctx.contains_y(pt2.y())) {
+      return Side_of_boundary::Left;
+    } else if(pt1.x() == m_ctx.xmax() && pt2.x() == m_ctx.xmax() && m_ctx.contains_y(pt1.y()) &&
+              m_ctx.contains_y(pt2.y()))
+    {
+      return Side_of_boundary::Right;
+    } else if(pt1.y() == m_ctx.ymin() && pt2.y() == m_ctx.ymin() && m_ctx.contains_x(pt1.x()) &&
+              m_ctx.contains_x(pt2.x()))
+    {
+      return Side_of_boundary::Bottom;
+    } else if(pt1.y() == m_ctx.ymax() && pt2.y() == m_ctx.ymax() && m_ctx.contains_x(pt1.x()) &&
+              m_ctx.contains_x(pt2.x()))
+    {
+      return Side_of_boundary::Top;
+    }
+    return Side_of_boundary::None;
+  }
+
   void add_boundary_helper_point(Approx_point from, Approx_point to) {
     if(from == to) {
       return;
     }
-    auto shared_side = m_ctx.shared_boundary_side(from, to);
-    if(shared_side == Arr_bounded_render_context::Side_of_boundary::None) {
+    auto shared_side = shared_boundary_side(from, to);
+    if(shared_side == Side_of_boundary::None) {
       return;
     }
     m_helper_indices.push_back(m_points.size());

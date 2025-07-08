@@ -34,10 +34,10 @@ template <typename Geom_traits>
 class Arr_construct_curve_end_impl<Geom_traits, true> : public Arr_construct_curve_end_base<Geom_traits>
 {
   using Approx_geom_traits = Arr_approximation_geometry_traits;
-  using Point_2 = typename Geom_traits::Point_2;
-  using X_monotone_curve = typename Geom_traits::X_monotone_curve_2;
-  using Parameter_space_in_x_2 = typename Geom_traits::Parameter_space_in_x_2;
-  using Parameter_space_in_y_2 = typename Geom_traits::Parameter_space_in_y_2;
+  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve = typename Type_traits<Geom_traits>::X_monotone_curve_2;
+  using Parameter_space_in_x_2 = typename Type_traits<Geom_traits>::Parameter_space_in_x_2;
+  using Parameter_space_in_y_2 = typename Type_traits<Geom_traits>::Parameter_space_in_y_2;
 
 public:
   Arr_construct_curve_end_impl(const Geom_traits& traits)
@@ -73,8 +73,8 @@ template <typename Geom_traits>
 class Arr_construct_curve_end_impl<Geom_traits, false> : public Arr_construct_curve_end_base<Geom_traits>
 {
   using Approx_geom_traits = Arr_approximation_geometry_traits;
-  using Point_2 = typename Geom_traits::Point_2;
-  using X_monotone_curve = typename Geom_traits::X_monotone_curve_2;
+  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve = typename Type_traits<Geom_traits>::X_monotone_curve_2;
 
 public:
   Arr_construct_curve_end_impl(const Geom_traits& traits)

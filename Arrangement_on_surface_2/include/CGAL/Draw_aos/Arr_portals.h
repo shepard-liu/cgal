@@ -6,6 +6,7 @@
 #include "CGAL/Draw_aos/Arr_construct_segments.h"
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/Arr_graph_conn.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/Object.h"
 #include "CGAL/basic.h"
 #include "CGAL/unordered_flat_map.h"
@@ -33,9 +34,9 @@ class Arr_portals
   using Vertex_const_handle = Arrangement::Vertex_const_handle;
   using Halfedge_const_handle = Arrangement::Halfedge_const_handle;
   using Face_const_handle = Arrangement::Face_const_handle;
-  using Point_2 = Geom_traits::Point_2;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
   using Feature_const = std::variant<Vertex_const_handle, Halfedge_const_handle, Face_const_handle>;
 
 public:

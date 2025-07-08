@@ -10,18 +10,18 @@ namespace CGAL {
 namespace draw_aos {
 namespace internal {
 
-template <typename Geom_traits, bool Has_approximate_2>
+template <typename GeomTraits, bool Has_approximate_2>
 class Arr_approximate_point_2_impl;
 
-template <typename Geom_traits>
-class Arr_approximate_point_2_impl<Geom_traits, true>
+template <typename GeomTraits>
+class Arr_approximate_point_2_impl<GeomTraits, true>
 {
   using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
+  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
 public:
-  Arr_approximate_point_2_impl(const Geom_traits& traits)
+  Arr_approximate_point_2_impl(const GeomTraits& traits)
       : m_approx(traits.approximate_2_object()) {}
 
   /**
@@ -43,20 +43,20 @@ public:
   double operator()(const Point_2& pt, int dim) const { return m_approx(pt, dim); }
 
 private:
-  typename Geom_traits::Approximate_2 m_approx;
+  typename GeomTraits::Approximate_2 m_approx;
 };
 
 // Fallback to use CGAL::to_double for traits that do not have an approximate_2_object.
-template <typename Geom_traits>
-class Arr_approximate_point_2_impl<Geom_traits, false>
+template <typename GeomTraits>
+class Arr_approximate_point_2_impl<GeomTraits, false>
 {
   using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Geom_traits::Point_2;
+  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
 
 public:
   // traits object is not used in the fallback implementation, but we keep it for consistency.
-  Arr_approximate_point_2_impl(const Geom_traits& traits) {}
+  Arr_approximate_point_2_impl(const GeomTraits& traits) {}
 
   /**
    * @brief Approximate a point.

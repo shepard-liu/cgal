@@ -11,6 +11,7 @@
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
 #include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/basic.h"
+#include "CGAL/number_utils.h"
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
@@ -59,10 +60,14 @@ class Arr_bounded_approximate_curve_2
         , bottom_inters(bottom_inters)
         , min_end(Arr_construct_curve_end<Geom_traits>(ctx.traits)(curve, ARR_MIN_END))
         , max_end(Arr_construct_curve_end<Geom_traits>(ctx.traits)(curve, ARR_MAX_END))
-        , tight_xmin(is_min_end_bounded() ? std::clamp(min_end->x(), FT(ctx.xmin()), FT(ctx.xmax())) : FT(ctx.xmin()))
-        , tight_xmax(is_max_end_bounded() ? std::clamp(max_end->x(), FT(ctx.xmin()), FT(ctx.xmax())) : FT(ctx.xmax()))
-        , tight_ymin(is_min_end_bounded() ? std::clamp(min_end->y(), FT(ctx.ymin()), FT(ctx.ymax())) : FT(ctx.ymin()))
-        , tight_ymax(is_max_end_bounded() ? std::clamp(max_end->y(), FT(ctx.ymin()), FT(ctx.ymax())) : FT(ctx.ymax()))
+        , xmin(ctx.xmin())
+        , xmax(ctx.xmax())
+        , ymin(ctx.ymin())
+        , ymax(ctx.ymax())
+        , txmin(is_min_end_bounded() ? std::clamp(min_end->x(), xmin, xmax) : xmin)
+        , txmax(is_max_end_bounded() ? std::clamp(max_end->x(), xmin, xmax) : xmax)
+        , tymin(is_min_end_bounded() ? std::clamp(min_end->y(), ymin, ymax) : ymin)
+        , tymax(is_max_end_bounded() ? std::clamp(max_end->y(), ymin, ymax) : ymax)
         , out_it(std::back_inserter(polyline)) {}
 
     bool has_y_intersections() const { return !top_inters.empty() || !bottom_inters.empty(); }
@@ -75,7 +80,8 @@ class Arr_bounded_approximate_curve_2
     const Arr_bounded_approximate_point_2& bounded_approx_pt;
     const Intersections_vector &top_inters, bottom_inters;
     const std::optional<Point_2> min_end, max_end;
-    const FT tight_xmin, tight_xmax, tight_ymin, tight_ymax;
+    const FT xmin, xmax, ymin, ymax;
+    const FT txmin, txmax, tymin, tymax;
     std::back_insert_iterator<Polyline_geom> out_it;
   };
 
@@ -129,19 +135,19 @@ private:
    * @param step the step to approximate the curve segment, negative values allowed.
    * @returns true if this part of the curve is within the closed bbox
    */
-  static void approximate_simple_curve_segment(Execution_context& ctx, const FT& start, const FT& end, double step) {
+  static void approximate_simple_curve_segment(Execution_context& ctx, FT start, FT end, FT step) {
     for(FT x = start + step; x < end; x += step) {
       auto y = ctx.compute_y_at_x(ctx.curve, x);
       if(!y.has_value()) {
         // break as soon as there's no more intersections
         break;
       }
-      if(y == ctx->ymin() || y == ctx->ymax()) {
+      if(y == ctx.ymin || y == ctx.ymax) {
         // The segment overlaps with the bbox edge. There's no need to insert a dummy point.
         break;
       }
       *ctx.out_it++ = ctx->approx_pt(Point_2(x, y.value()));
-      if(y > ctx->ymax() || y < ctx->ymin()) {
+      if(y > ctx.ymax || y < ctx.ymin) {
         // We are outside the bbox. The dummy point was already inserted to indicate that.
         break;
       }
@@ -149,7 +155,7 @@ private:
   };
 
   static void approximate_vertical_curve(Execution_context& ctx) {
-    if(ctx.is_bounded_curve() && (ctx.min_end->x() < ctx->xmin() || ctx.min_end->x() > ctx->xmax())) {
+    if(ctx.is_bounded_curve() && (ctx.min_end->x() < ctx.xmin || ctx.min_end->x() > ctx.xmax)) {
       // The curve is outside the bbox in x direction, no need to approximate
       return;
     }
@@ -160,9 +166,7 @@ private:
     }
     // The vertical curve is now within the x bounds.
 
-    FT tymin = ctx.tight_ymin;
-    FT tymax = ctx.tight_ymax;
-    if(tymax == tymin) {
+    if(ctx.tymax == ctx.tymin) {
       // But the curve is not degenerate. So, either it has only one point within the bbox or it is
       // entirely outside the bbox in y direction.
       return;
@@ -170,8 +174,8 @@ private:
     // Now we gaurantee that the curve has at least two points within the bbox in y direction.
     // We have to obtain the x coordinate of this vertical curve.
     FT x = ctx.is_bounded_curve() ? ctx.min_end->x() : first_intersection(ctx)->x();
-    *ctx.out_it++ = ctx->approx_pt(Point_2(x, tymin));
-    *ctx.out_it++ = ctx->approx_pt(Point_2(x, tymax));
+    *ctx.out_it++ = ctx->approx_pt(Point_2(x, ctx.tymin));
+    *ctx.out_it++ = ctx->approx_pt(Point_2(x, ctx.tymax));
   }
 
 public:
@@ -180,8 +184,8 @@ public:
       : m_compute_y_at_x(ctx)
       , m_approx_pt(point_approx)
       , m_ctx(ctx)
-      , m_top(ctx.cst_horizontal_segment(ctx.ymax(), ctx.xmin(), ctx.xmax()))
-      , m_bottom(ctx.cst_horizontal_segment(ctx.ymin(), ctx.xmin(), ctx.xmax())) {}
+      , m_top(ctx.cst_horizontal_segment(FT(ctx.ymax()), FT(ctx.xmin()), FT(ctx.xmax())))
+      , m_bottom(ctx.cst_horizontal_segment(FT(ctx.ymin()), FT(ctx.xmin()), FT(ctx.xmax()))) {}
 
   /**
    * @brief Approximate an x-monotone curve from left to right within the bounding box.
@@ -214,20 +218,18 @@ public:
 
     polyline.reserve(top_inters.size() + bottom_inters.size());
 
-    FT txmin = ctx.tight_xmin;
-    FT txmax = ctx.tight_xmax;
     FT last_x;
     std::optional<Point_2> first_inter = first_intersection(ctx);
 
-    if(auto y_at_txmin = ctx.compute_y_at_x(curve, txmin);
-       y_at_txmin.has_value() && y_at_txmin != ctx->ymin() && y_at_txmin != ctx->ymax())
+    if(auto y_at_txmin = ctx.compute_y_at_x(curve, ctx.txmin);
+       y_at_txmin.has_value() && y_at_txmin != ctx.ymin && y_at_txmin != ctx.ymax)
     {
       // The tight starting point of the curve is within the bbox and
       // it's not on the top or bottom edge.
-      *ctx.out_it++ = txmin == ctx->xmin() ? ctx->approx_pt_on_boundary(Point_2(txmin, y_at_txmin.value()))
-                                           : ctx->approx_pt(Point_2(txmin, y_at_txmin.value()));
-      FT segment_end = first_inter.has_value() ? first_inter->x() : txmax;
-      approximate_simple_curve_segment(ctx, txmin, segment_end, ctx->approx_error);
+      *ctx.out_it++ = ctx.txmin == ctx.xmin ? ctx->approx_pt_on_boundary(Point_2(ctx.txmin, y_at_txmin.value()))
+                                            : ctx->approx_pt(Point_2(ctx.txmin, y_at_txmin.value()));
+      FT segment_end = first_inter.has_value() ? first_inter->x() : ctx.txmax;
+      approximate_simple_curve_segment(ctx, ctx.txmin, segment_end, FT(ctx->approx_error));
       last_x = segment_end;
     } else if(first_inter.has_value()) {
       last_x = first_inter->x();
@@ -238,18 +240,18 @@ public:
     // iterate through the intersections and insert segments in-between.
     std::merge(top_inters.begin(), top_inters.end(), bottom_inters.begin(), bottom_inters.end(),
                boost::make_function_output_iterator([&last_x, &ctx](const Point_2& inter) {
-                 approximate_simple_curve_segment(ctx, last_x, inter.x(), ctx->approx_error);
+                 approximate_simple_curve_segment(ctx, last_x, inter.x(), FT(ctx->approx_error));
                  *ctx.out_it++ = ctx->approx_pt_on_boundary(inter);
                  last_x = inter.x();
                }),
                [&ctx](const Point_2& pt1, const Point_2& pt2) { return ctx->compare_xy_2(pt1, pt2) == CGAL::SMALLER; });
 
-    if(auto y_at_txmax = ctx.compute_y_at_x(curve, txmax);
-       y_at_txmax.has_value() && y_at_txmax != ctx->ymin() && y_at_txmax != ctx->ymax())
+    if(auto y_at_txmax = ctx.compute_y_at_x(curve, ctx.txmax);
+       y_at_txmax.has_value() && y_at_txmax != ctx.ymin && y_at_txmax != ctx.ymax)
     {
-      approximate_simple_curve_segment(ctx, last_x, txmax, ctx->approx_error);
-      *ctx.out_it++ = txmax == ctx->xmax() ? ctx->approx_pt_on_boundary(Point_2(txmax, y_at_txmax.value()))
-                                           : ctx->approx_pt(Point_2(txmax, y_at_txmax.value()));
+      approximate_simple_curve_segment(ctx, last_x, ctx.txmax, FT(ctx->approx_error));
+      *ctx.out_it++ = ctx.txmax == ctx.xmax ? ctx->approx_pt_on_boundary(Point_2(ctx.txmax, y_at_txmax.value()))
+                                            : ctx->approx_pt(Point_2(ctx.txmax, y_at_txmax.value()));
     }
 
     return polyline;

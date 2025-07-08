@@ -16,6 +16,7 @@
 #include <CGAL/Draw_aos/helpers.h>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <memory>
 
@@ -55,16 +56,10 @@ private:
 class Arr_bounds_context_mixin
 {
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using FT = Type_traits<Geom_traits>::FT;
 
 protected:
-  enum class Side_of_boundary {
-    Left,
-    Right,
-    Bottom,
-    Top,
-    None,
-  };
-
   Arr_bounds_context_mixin(const Bbox_2& bbox)
       : m_bbox(bbox) {}
 
@@ -76,54 +71,33 @@ public:
 
   const Bbox_2& bbox() const { return m_bbox; }
 
-  template <typename FT>
-  bool strictly_contains_x(FT x) const {
-    return xmin() < x && x <= xmax();
-  }
+  bool strictly_contains_x(double x) const { return xmin() < x && x <= xmax(); }
+  bool strictly_contains_x(FT x) const { return FT(xmin()) < x && x <= FT(xmax()); }
 
-  template <typename FT>
-  bool strictly_contains_y(FT y) const {
-    return ymin() < y && y <= ymax();
-  }
+  bool strictly_contains_y(double y) const { return ymin() < y && y <= ymax(); }
+  bool strictly_contains_y(FT y) const { return FT(ymin()) < y && y <= FT(ymax()); }
 
-  template <typename Point>
-  bool strictly_contains(const Point& pt) const {
+  bool strictly_contains(const Point_2& pt) const { return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y()); }
+  bool strictly_contains(const Approx_point& pt) const {
     return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y());
   }
 
-  template <typename FT>
-  bool contains_x(FT x) const {
-    return xmin() <= x && x <= xmax();
-  }
+  bool contains_x(double x) const { return xmin() <= x && x <= xmax(); }
+  bool contains_x(FT x) const { return FT(xmin()) <= x && x <= FT(xmax()); }
 
-  template <typename FT>
-  bool contains_y(FT y) const {
-    return ymin() <= y && y <= ymax();
-  }
+  bool contains_y(double y) const { return ymin() <= y && y <= ymax(); }
+  bool contains_y(FT y) const { return FT(ymin()) <= y && y <= FT(ymax()); }
 
-  template <typename Point>
-  bool contains(const Point& pt) const {
-    return contains_x(pt.x()) && contains_y(pt.y());
-  }
+  bool contains(const Approx_point& pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
+  bool contains(const Point_2& pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
 
-  template <typename Point>
-  bool is_on_boundary(const Point& pt) const {
+  bool is_on_boundary(const Approx_point& pt) const {
     return (pt.x() == xmin() || pt.x() == xmax()) && contains_y(pt.y()) ||
            (pt.y() == ymin() || pt.y() == ymax()) && contains_x(pt.x());
   }
-
-  template <typename Point>
-  Side_of_boundary shared_boundary_side(const Point& pt1, const Point& pt2) const {
-    if(pt1.x() == xmin() && pt2.x() == xmin() && contains_y(pt1.y()) && contains_y(pt2.y())) {
-      return Side_of_boundary::Left;
-    } else if(pt1.x() == xmax() && pt2.x() == xmax() && contains_y(pt1.y()) && contains_y(pt2.y())) {
-      return Side_of_boundary::Right;
-    } else if(pt1.y() == ymin() && pt2.y() == ymin() && contains_x(pt1.x()) && contains_x(pt2.x())) {
-      return Side_of_boundary::Bottom;
-    } else if(pt1.y() == ymax() && pt2.y() == ymax() && contains_x(pt1.x()) && contains_x(pt2.x())) {
-      return Side_of_boundary::Top;
-    }
-    return Side_of_boundary::None;
+  bool is_on_boundary(const Point_2& pt) const {
+    return (pt.x() == FT(xmin()) || pt.x() == FT(xmax())) && contains_y(pt.y()) ||
+           (pt.y() == FT(ymin()) || pt.y() == FT(ymax())) && contains_x(pt.x());
   }
 
 private:
@@ -182,13 +156,11 @@ public:
 class Arr_bounded_render_context : public Arr_render_context, public Arr_bounds_context_mixin
 {
   using Approx_point = Arr_approximation_geometry_traits::Approx_point;
-  using Point_2 = Geom_traits::Point_2;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
 
   constexpr static double ep_base = std::numeric_limits<double>::epsilon();
 
 public:
-  using Side_of_boundary = Arr_bounds_context_mixin::Side_of_boundary;
-
   Arr_bounded_render_context(const Arr_render_context& ctx, const Bbox_2& bbox, Arr_approximation_cache& cache)
       : Arr_render_context(ctx)
       , ep_xmin(std::max(std::abs(ep_base * bbox.xmin()), ep_base))
@@ -215,6 +187,8 @@ public:
     } else if(std::abs(y - ymax()) < ep_ymax) {
       y = ymax();
     } else {
+      std::cerr << "Failed to match point to the boundary: " << pt << std::endl;
+      std::cerr << "Bbox: " << bbox() << std::endl;
       // We shall not call this function if not approximated from a boundary point.
       CGAL_assertion(false && "Failed to match point to the boundary");
     }

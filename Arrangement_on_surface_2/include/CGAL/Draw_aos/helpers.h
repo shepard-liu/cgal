@@ -1,5 +1,6 @@
 #ifndef CGAL_DRAW_AOS_HELPERS_H
 #define CGAL_DRAW_AOS_HELPERS_H
+#include "CGAL/Arr_circle_segment_traits_2.h"
 #include "CGAL/Arr_conic_traits_2.h"
 #include "CGAL/Arr_linear_traits_2.h"
 #include "CGAL/CORE_algebraic_number_traits.h"
@@ -14,11 +15,13 @@ using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
 //
 // using Geom_traits = CGAL::Arr_linear_traits_2<Exact_kernel>;
 
-using Nt_traits = CGAL::CORE_algebraic_number_traits;
-using Rational = Nt_traits::Rational;
-using Rat_kernel = CGAL::Cartesian<Rational>;
-using Alg_kernel = CGAL::Cartesian<CORE_algebraic_number_traits::Algebraic>;
-using Geom_traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
+// using Nt_traits = CGAL::CORE_algebraic_number_traits;
+// using Rational = Nt_traits::Rational;
+// using Rat_kernel = CGAL::Cartesian<Rational>;
+// using Alg_kernel = CGAL::Cartesian<CORE_algebraic_number_traits::Algebraic>;
+// using Geom_traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
+
+using Geom_traits = CGAL::Arr_circle_segment_traits_2<Exact_kernel>;
 
 using Arrangement = Arrangement_2<Geom_traits>;
 

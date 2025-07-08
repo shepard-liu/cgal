@@ -447,84 +447,118 @@
 //   CGAL::draw(arr);
 // }
 
-void draw_conic_arcs_arr() {
-  using Nt_traits = CGAL::CORE_algebraic_number_traits;
-  using Rational = Nt_traits::Rational;
-  using Rat_kernel = CGAL::Cartesian<Rational>;
-  using Rat_point = Rat_kernel::Point_2;
-  using Rat_segment = Rat_kernel::Segment_2;
-  using Rat_circle = Rat_kernel::Circle_2;
-  using Algebraic = Nt_traits::Algebraic;
-  using Alg_kernel = CGAL::Cartesian<Algebraic>;
-  using Traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
-  using Point = Traits::Point_2;
-  using Conic_arc = Traits::Curve_2;
-  using X_monotone_conic_arc = Traits::X_monotone_curve_2;
+// void draw_conic_arcs_arr() {
+//   using Nt_traits = CGAL::CORE_algebraic_number_traits;
+//   using Rational = Nt_traits::Rational;
+//   using Rat_kernel = CGAL::Cartesian<Rational>;
+//   using Rat_point = Rat_kernel::Point_2;
+//   using Rat_segment = Rat_kernel::Segment_2;
+//   using Rat_circle = Rat_kernel::Circle_2;
+//   using Algebraic = Nt_traits::Algebraic;
+//   using Alg_kernel = CGAL::Cartesian<Algebraic>;
+//   using Traits = CGAL::Arr_conic_traits_2<Rat_kernel, Alg_kernel, Nt_traits>;
+//   using Point = Traits::Point_2;
+//   using Conic_arc = Traits::Curve_2;
+//   using X_monotone_conic_arc = Traits::X_monotone_curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
+
+//   Arrangement arr;
+//   auto traits = Traits();
+//   auto ctr_cv = traits.construct_curve_2_object();
+
+//   // Insert a hyperbolic arc (C1), supported by the hyperbola y = 1/x
+//   // (or: xy - 1 = 0) with the endpoints (1/4, 4) and (2, 1/2).
+//   // The arc is counterclockwise oriented.
+//   CGAL::insert(arr,
+//                ctr_cv(0, 0, 1, 0, 0, -1, CGAL::COUNTERCLOCKWISE, Point(Rational(1, 4), 4), Point(2, Rational(1,
+//                2))));
+
+//   // Insert a full ellipse (C2), which is (x/4)^2 + (y/2)^2 = 0 rotated by
+//   // phi = 36.87 degrees (such that sin(phi) = 0.6, cos(phi) = 0.8),
+//   // yielding: 58x^2 + 72y^2 - 48xy - 360 = 0.
+//   CGAL::insert(arr, ctr_cv(58, 72, -48, 0, 0, -360));
+
+//   // Insert the segment (C3) (1, 1) -- (0, -3).
+//   CGAL::insert(arr, ctr_cv(Rat_segment(Rat_point(1, 1), Rat_point(0, -3))));
+
+//   // Insert a circular arc (C4) supported by the circle x^2 + y^2 = 5^2,
+//   // with (-3, 4) and (4, 3) as its endpoints. We want the arc to be
+//   // clockwise-oriented, so it passes through (0, 5) as well.
+//   CGAL::insert(arr, ctr_cv(Rat_point(-3, 4), Rat_point(0, 5), Rat_point(4, 3)));
+
+//   // Insert a full unit circle (C5) that is centered at (0, 4).
+//   CGAL::insert(arr, ctr_cv(Rat_circle(Rat_point(0, 4), 1)));
+
+//   // Insert a parabolic arc (C6) supported by the parabola y = -x^2 with
+//   // endpoints (-sqrt(3),-3) (~(-1.73,-3)) and (sqrt(2),-2) (~(1.41,-2)).
+//   // Since the x-coordinates of the endpoints cannot be accurately represented,
+//   // we specify them as the intersections of the parabola with the lines
+//   // y = -3 and y = -2, respectively. The arc is clockwise-oriented.
+//   Conic_arc c6 = ctr_cv(1, 0, 0, 0, 1, 0, CGAL::CLOCKWISE, // The parabola.
+//                         Point(-1.73, -3),                  // approximation of the source.
+//                         0, 0, 0, 0, 1, 3,                  // the line: y = -3.
+//                         Point(1.41, -2),                   // approximation of the target.
+//                         0, 0, 0, 0, 1, 2);                 // the line: y = -2.
+//   CGAL::insert(arr, c6);
+
+//   // Insert the right half of the circle centered at (4, 2.5) whose radius
+//   // is 1/2 (therefore its squared radius is 1/4) (C7).
+//   Rat_circle circ7(Rat_point(4, Rational(5, 2)), Rational(1, 4));
+//   CGAL::insert(arr, ctr_cv(circ7, CGAL::CLOCKWISE, Point(4, 3), Point(4, 2)));
+
+//   for(auto fh : arr.face_handles()) {
+//     std::cout << "Face: is unbounded = " << fh->is_unbounded() << std::endl;
+//     for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
+//       std::cout << "  Inner CCB: " << std::endl;
+//       auto circ = *inner_ccb;
+//       do {
+//         std::cout << "    Curve: " << circ->curve() << std::endl;
+//         circ = circ->next();
+//       } while(circ != *inner_ccb);
+//     }
+//     for(auto outer_ccb = fh->outer_ccbs_begin(); outer_ccb != fh->outer_ccbs_end(); ++outer_ccb) {
+//       std::cout << "  Outer CCB: " << std::endl;
+//       auto circ = *outer_ccb;
+//       do {
+//         std::cout << "    Curve: " << circ->curve() << std::endl;
+//         circ = circ->next();
+//       } while(circ != *outer_ccb);
+//     }
+//   }
+
+//   CGAL::draw_viewer(arr);
+// }
+
+void draw_circle_segs_arr() {
+  using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+  using Traits = CGAL::Arr_circle_segment_traits_2<Exact_kernel>;
+  using Point_2 = Traits::Point_2;
+  using Curve_2 = Traits::Curve_2;
+  using X_monotone_curve_2 = Traits::X_monotone_curve_2;
   using Arrangement = CGAL::Arrangement_2<Traits>;
 
+  using X_monotone_curve = Traits::X_monotone_curve_2;
+  using Rational_point = Traits::Rational_point_2;
+  using Segment = Traits::Rational_segment_2;
+  using Circle = Traits::Rational_circle_2;
+
   Arrangement arr;
-  auto traits = Traits();
-  auto ctr_cv = traits.construct_curve_2_object();
+  auto traits = arr.traits();
 
-  // Insert a hyperbolic arc (C1), supported by the hyperbola y = 1/x
-  // (or: xy - 1 = 0) with the endpoints (1/4, 4) and (2, 1/2).
-  // The arc is counterclockwise oriented.
-  CGAL::insert(arr,
-               ctr_cv(0, 0, 1, 0, 0, -1, CGAL::COUNTERCLOCKWISE, Point(Rational(1, 4), 4), Point(2, Rational(1, 2))));
+  // Create a circle centered at the origin with radius 5 (C1).
+  insert(arr, Curve_2(Circle(Rational_point(0, 0), (25))));
 
-  // Insert a full ellipse (C2), which is (x/4)^2 + (y/2)^2 = 0 rotated by
-  // phi = 36.87 degrees (such that sin(phi) = 0.6, cos(phi) = 0.8),
-  // yielding: 58x^2 + 72y^2 - 48xy - 360 = 0.
-  CGAL::insert(arr, ctr_cv(58, 72, -48, 0, 0, -360));
+  // a circle in circle
+  insert(arr, Curve_2(Circle(Rational_point(-1.5, 0), (1))));
 
-  // Insert the segment (C3) (1, 1) -- (0, -3).
-  CGAL::insert(arr, ctr_cv(Rat_segment(Rat_point(1, 1), Rat_point(0, -3))));
+  // Create a circle centered at (7,7) with radius 5 (C2).
+  insert(arr, Curve_2(Circle(Rational_point(7, 7), (25))));
 
-  // Insert a circular arc (C4) supported by the circle x^2 + y^2 = 5^2,
-  // with (-3, 4) and (4, 3) as its endpoints. We want the arc to be
-  // clockwise-oriented, so it passes through (0, 5) as well.
-  CGAL::insert(arr, ctr_cv(Rat_point(-3, 4), Rat_point(0, 5), Rat_point(4, 3)));
+  // Create a circle centered at (4,-0.5) with radius 3.5 (= 7/2) (C3).
+  Rational_point c3(4, (-1) / (2));
+  insert(arr, Curve_2(Circle(c3, (49) / (4))));
 
-  // Insert a full unit circle (C5) that is centered at (0, 4).
-  CGAL::insert(arr, ctr_cv(Rat_circle(Rat_point(0, 4), 1)));
-
-  // Insert a parabolic arc (C6) supported by the parabola y = -x^2 with
-  // endpoints (-sqrt(3),-3) (~(-1.73,-3)) and (sqrt(2),-2) (~(1.41,-2)).
-  // Since the x-coordinates of the endpoints cannot be accurately represented,
-  // we specify them as the intersections of the parabola with the lines
-  // y = -3 and y = -2, respectively. The arc is clockwise-oriented.
-  Conic_arc c6 = ctr_cv(1, 0, 0, 0, 1, 0, CGAL::CLOCKWISE, // The parabola.
-                        Point(-1.73, -3),                  // approximation of the source.
-                        0, 0, 0, 0, 1, 3,                  // the line: y = -3.
-                        Point(1.41, -2),                   // approximation of the target.
-                        0, 0, 0, 0, 1, 2);                 // the line: y = -2.
-  CGAL::insert(arr, c6);
-
-  // Insert the right half of the circle centered at (4, 2.5) whose radius
-  // is 1/2 (therefore its squared radius is 1/4) (C7).
-  Rat_circle circ7(Rat_point(4, Rational(5, 2)), Rational(1, 4));
-  CGAL::insert(arr, ctr_cv(circ7, CGAL::CLOCKWISE, Point(4, 3), Point(4, 2)));
-
-  for(auto fh : arr.face_handles()) {
-    std::cout << "Face: is unbounded = " << fh->is_unbounded() << std::endl;
-    for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
-      std::cout << "  Inner CCB: " << std::endl;
-      auto circ = *inner_ccb;
-      do {
-        std::cout << "    Curve: " << circ->curve() << std::endl;
-        circ = circ->next();
-      } while(circ != *inner_ccb);
-    }
-    for(auto outer_ccb = fh->outer_ccbs_begin(); outer_ccb != fh->outer_ccbs_end(); ++outer_ccb) {
-      std::cout << "  Outer CCB: " << std::endl;
-      auto circ = *outer_ccb;
-      do {
-        std::cout << "    Curve: " << circ->curve() << std::endl;
-        circ = circ->next();
-      } while(circ != *outer_ccb);
-    }
-  }
-
+  // Draw the arrangement
   CGAL::draw_viewer(arr);
 }
 
@@ -611,7 +645,8 @@ int main() {
   // draw_linear_arr_4();
   // draw_linear_arr_5();
   // test_zone();
-  draw_conic_arcs_arr();
+  // draw_conic_arcs_arr();
+  draw_circle_segs_arr();
   // draw_algebraic_arr();
   // draw_rational_arr();
   // draw_circle_segs_arr();

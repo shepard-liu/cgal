@@ -7,6 +7,7 @@
 #include "CGAL/Draw_aos/Arr_bounded_approximate_point_2.h"
 #include "CGAL/Draw_aos/Arr_bounded_face_triangulator.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/basic.h"
 #include <CGAL/Draw_aos/Arr_approximation_geometry_traits.h>
 #include <CGAL/Draw_aos/helpers.h>
@@ -210,6 +211,7 @@ class Arr_bounded_approximate_face_2
   using Portal_vector = Arr_portals::Portal_vector;
   using Portal = Arr_portals::Portal;
   using Point_or_portal = std::variant<Approx_point, Portal>;
+  using FT = Type_traits<Geom_traits>::FT;
 
   struct Left_to_right_tag
   {};
@@ -356,7 +358,8 @@ private:
                  *ctx.out_it++ = std::get<Approx_point>(point_or_portal);
                }),
                [](const Portal& portal, const Approx_point& pt) {
-                 return Is_left_to_right ? portal.second->point().x() < pt.x() : portal.second->point().x() > pt.x();
+                 return Is_left_to_right ? portal.second->point().x() < FT(pt.x())
+                                         : portal.second->point().x() > FT(pt.x());
                });
   }
 

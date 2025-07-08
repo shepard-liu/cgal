@@ -8,6 +8,7 @@
 #include "CGAL/Draw_aos/Arr_bounded_approximate_curve_2.h"
 #include "CGAL/Draw_aos/Arr_bounded_approximate_face_2.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
+#include "CGAL/Draw_aos/type_utils.h"
 #include <CGAL/Draw_aos/helpers.h>
 #include <CGAL/Draw_aos/Arr_portals.h>
 #include <CGAL/IO/Color.h>
@@ -24,7 +25,9 @@ namespace draw_aos {
 class Arr_bounded_renderer
 {
   using Color = IO::Color;
-  using Point_2 = Geom_traits::Point_2;
+  using FT = Type_traits<Geom_traits>::FT;
+  using Point_2 = Type_traits<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = Type_traits<Geom_traits>::X_monotone_curve_2;
   using Vertex_const_handle = Arrangement::Vertex_const_handle;
   using Edge_const_handle = Arrangement::Edge_const_iterator;
   using Halfedge_const_handle = Arrangement::Halfedge_const_handle;
@@ -32,7 +35,6 @@ class Arr_bounded_renderer
   using Vertex_handle = Arrangement::Vertex_handle;
   using Halfedge_handle = Arrangement::Halfedge_handle;
   using Face_handle = Arrangement::Face_handle;
-  using X_monotone_curve_2 = Geom_traits::X_monotone_curve_2;
   using Point_Location = Arr_trapezoid_ric_point_location<Arrangement>;
   using Feature_const = std::variant<Vertex_const_handle, Halfedge_const_handle, Face_const_handle>;
   using Feature_const_vector = std::vector<Feature_const>;
@@ -177,10 +179,10 @@ public:
 
     Execution_context ctx(Arr_bounded_render_context(m_ctx, m_bbox, cache));
 
-    auto top = ctx->cst_horizontal_segment(ctx->ymax(), ctx->xmin(), ctx->xmax());
-    auto bottom = ctx->cst_horizontal_segment(ctx->ymin(), ctx->xmin(), ctx->xmax());
-    auto left = ctx->cst_vertical_segment(ctx->xmin(), ctx->ymin(), ctx->ymax());
-    auto right = ctx->cst_vertical_segment(ctx->xmax(), ctx->ymin(), ctx->ymax());
+    auto top = ctx->cst_horizontal_segment(FT(ctx->ymax()), FT(ctx->xmin()), FT(ctx->xmax()));
+    auto bottom = ctx->cst_horizontal_segment(FT(ctx->ymin()), FT(ctx->xmin()), FT(ctx->xmax()));
+    auto left = ctx->cst_vertical_segment(FT(ctx->xmin()), FT(ctx->ymin()), FT(ctx->ymax()));
+    auto right = ctx->cst_vertical_segment(FT(ctx->xmax()), FT(ctx->ymin()), FT(ctx->ymax()));
 
     // top, left are open edges while bottom, right are closed.
     approx_intersecting_features(ctx, top, Feature_type::Face);
