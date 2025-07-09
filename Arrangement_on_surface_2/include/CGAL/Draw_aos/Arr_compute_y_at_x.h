@@ -1,5 +1,7 @@
 #ifndef CGAL_DRAW_AOS_ARR_COMPUTE_Y_AT_X_H
 #define CGAL_DRAW_AOS_ARR_COMPUTE_Y_AT_X_H
+#include "CGAL/Draw_aos/Arr_approximate_point_2.h"
+#include "CGAL/Draw_aos/Arr_bounded_approximate_point_2.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/type_utils.h"
@@ -9,9 +11,9 @@ namespace CGAL {
 namespace draw_aos {
 
 /**
- * @brief Functor to compute the y-coordinate at a given x-coordinate for an x-monotone curve within a bounding box.
+ * @brief Functor to compute the point at a given x-coordinate on an x-monotone curve within a bounding box.
  */
-class Arr_compute_y_at_x
+class Arr_compute_point_2_at_x
 {
 public:
   using Point_2 = Type_traits<Geom_traits>::Point_2;
@@ -19,16 +21,14 @@ public:
   using Intersect_2 = Type_traits<Geom_traits>::Intersect_2;
   using Construct_min_vertex_2 = Type_traits<Geom_traits>::Construct_min_vertex_2;
   using FT = Type_traits<Geom_traits>::FT;
-  using Approximate_2 = Type_traits<Geom_traits>::Approximate_2;
   using Is_vertical_2 = Type_traits<Geom_traits>::Is_vertical_2;
 
-  Arr_compute_y_at_x(const Arr_render_context& ctx)
+  Arr_compute_point_2_at_x(const Arr_render_context& ctx)
       : m_ctx(ctx)
-      // TODO: some traits does not have approximate_2_object. we'll need a specialization for them.
-      , m_approx(ctx.traits.approximate_2_object()) {}
+      , m_approx(ctx.traits) {}
 
   /**
-   * @brief Computes the y-coordinate at a given x-coordinate for an x-monotone curve trimmed
+   * @brief Computes the point at a given x-coordinate on an x-monotone curve trimmed
    * to the bounding box.
    *
    * The bounding box here is considered as closed.
@@ -39,16 +39,16 @@ public:
    * @return true if there is an intersection at given x within the bounding box,
    * @return false otherwise.
    */
-  std::optional<FT> operator()(const X_monotone_curve_2& curve, const FT& x) const {
+  std::optional<Point_2> operator()(const X_monotone_curve_2& curve, FT x) const {
     CGAL_assertion(!m_ctx.is_vertical_2(curve));
 
     auto min_pt = m_ctx.cst_curve_end(curve, ARR_MIN_END);
     auto max_pt = m_ctx.cst_curve_end(curve, ARR_MAX_END);
     if(min_pt.has_value() && min_pt->x() == x) {
-      return min_pt->y();
+      return min_pt;
     }
     if(max_pt.has_value() && max_pt->x() == x) {
-      return max_pt->y();
+      return max_pt;
     }
 
     using Multiplicity = Geom_traits::Multiplicity;
@@ -57,25 +57,25 @@ public:
     using Intersect_type = std::variant<Intersect_point, Intersect_curve>;
 
     auto vertical_line = m_ctx.cst_vertical_segment(x, m_ymin, m_ymax);
-    std::optional<FT> y;
-    auto func_out_iter = boost::make_function_output_iterator([&y, this](const Intersect_type& res) {
+    std::optional<Point_2> pt;
+    auto func_out_iter = boost::make_function_output_iterator([&pt, this](const Intersect_type& res) {
       CGAL_assertion_msg(std::holds_alternative<Intersect_point>(res),
                          "Unexpected intersection type, expected Intersect_point");
 
-      y = std::get<Intersect_point>(res).first.y();
+      pt = std::get<Intersect_point>(res).first;
     });
     m_ctx.intersect_2(curve, vertical_line, func_out_iter);
-    return y;
+    return pt;
   }
 
 private:
-  Approximate_2 m_approx;
+  const Arr_approximate_point_2<Geom_traits> m_approx;
   const Arr_render_context& m_ctx;
 
   // Should be enough for visualization purposes.
   // constexpr static double m_ymin = std::numeric_limits<double>::lowest();
   // constexpr static double m_ymax = std::numeric_limits<double>::max();
-  // maximum of double is too large for CORE::BigFloat, no idea why
+  // maximum of double is too large for CORE number types, no idea why
   constexpr static double m_ymin = -1e8;
   constexpr static double m_ymax = 1e8;
 };

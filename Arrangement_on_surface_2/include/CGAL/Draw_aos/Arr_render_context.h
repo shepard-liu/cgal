@@ -119,8 +119,8 @@ public:
 
   const Geom_traits& traits;
   const Arr_construct_curve_end<Geom_traits> cst_curve_end;
-  const Arr_construct_vertical_segment cst_vertical_segment;
-  const Arr_construct_horizontal_segment cst_horizontal_segment;
+  const Arr_construct_vertical_segment<Geom_traits> cst_vertical_segment;
+  const Arr_construct_horizontal_segment<Geom_traits> cst_horizontal_segment;
   const Type_traits<Geom_traits>::Intersect_2 intersect_2;
   const Type_traits<Geom_traits>::Compare_xy_2 compare_xy_2;
   const Type_traits<Geom_traits>::Is_vertical_2 is_vertical_2;

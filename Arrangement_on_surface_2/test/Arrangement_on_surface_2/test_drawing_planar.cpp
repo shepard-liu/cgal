@@ -13,12 +13,16 @@
 #include "CGAL/CORE/BigFloat.h"
 #include "CGAL/CORE_algebraic_number_traits.h"
 #include "CGAL/Draw_aos/Arr_viewer.h"
+#include "CGAL/Algebraic_kernel_for_circles_2_2.h"
+#include "CGAL/Circular_kernel_2.h"
+#include "CGAL/Arr_circular_line_arc_traits_2.h"
 #include <array>
 
 #include <fstream>
 #include <iostream>
 #include "CGAL/Exact_predicates_exact_constructions_kernel.h"
 #include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/number_utils.h"
 #include <CGAL/draw_arrangement_2.h>
 #include <vector>
 
@@ -529,38 +533,38 @@
 //   CGAL::draw_viewer(arr);
 // }
 
-void draw_circle_segs_arr() {
-  using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
-  using Traits = CGAL::Arr_circle_segment_traits_2<Exact_kernel>;
-  using Point_2 = Traits::Point_2;
-  using Curve_2 = Traits::Curve_2;
-  using X_monotone_curve_2 = Traits::X_monotone_curve_2;
-  using Arrangement = CGAL::Arrangement_2<Traits>;
+// void draw_circle_segs_arr() {
+//   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
+//   using Traits = CGAL::Arr_circle_segment_traits_2<Exact_kernel>;
+//   using Point_2 = Traits::Point_2;
+//   using Curve_2 = Traits::Curve_2;
+//   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
+//   using Arrangement = CGAL::Arrangement_2<Traits>;
 
-  using X_monotone_curve = Traits::X_monotone_curve_2;
-  using Rational_point = Traits::Rational_point_2;
-  using Segment = Traits::Rational_segment_2;
-  using Circle = Traits::Rational_circle_2;
+//   using X_monotone_curve = Traits::X_monotone_curve_2;
+//   using Rational_point = Traits::Rational_point_2;
+//   using Segment = Traits::Rational_segment_2;
+//   using Circle = Traits::Rational_circle_2;
 
-  Arrangement arr;
-  auto traits = arr.traits();
+//   Arrangement arr;
+//   auto traits = arr.traits();
 
-  // Create a circle centered at the origin with radius 5 (C1).
-  insert(arr, Curve_2(Circle(Rational_point(0, 0), (25))));
+//   // Create a circle centered at the origin with radius 5 (C1).
+//   insert(arr, Curve_2(Circle(Rational_point(0, 0), (25))));
 
-  // a circle in circle
-  insert(arr, Curve_2(Circle(Rational_point(-1.5, 0), (1))));
+//   // a circle in circle
+//   insert(arr, Curve_2(Circle(Rational_point(-1.5, 0), (1))));
 
-  // Create a circle centered at (7,7) with radius 5 (C2).
-  insert(arr, Curve_2(Circle(Rational_point(7, 7), (25))));
+//   // Create a circle centered at (7,7) with radius 5 (C2).
+//   insert(arr, Curve_2(Circle(Rational_point(7, 7), (25))));
 
-  // Create a circle centered at (4,-0.5) with radius 3.5 (= 7/2) (C3).
-  Rational_point c3(4, (-1) / (2));
-  insert(arr, Curve_2(Circle(c3, (49) / (4))));
+//   // Create a circle centered at (4,-0.5) with radius 3.5 (= 7/2) (C3).
+//   Rational_point c3(4, (-1) / (2));
+//   insert(arr, Curve_2(Circle(c3, (49) / (4))));
 
-  // Draw the arrangement
-  CGAL::draw_viewer(arr);
-}
+//   // Draw the arrangement
+//   CGAL::draw_viewer(arr);
+// }
 
 // void draw_algebraic_arr() {
 // #if CGAL_USE_GMP && CGAL_USE_MPFI
@@ -578,39 +582,46 @@ void draw_circle_segs_arr() {
 //   using Polynomial = Traits::Polynomial_2;
 //   using X_monotone_curve_2 = Traits::X_monotone_curve_2;
 //   using Parameter_space_in_x_2 = Traits::Parameter_space_in_x_2;
+//   using Point_2 = Traits::Point_2;
 
 //   Arrangement arr;
 //   auto traits = arr.traits();
 //   X_monotone_curve_2 cv;
-//   auto param_space_in_x = traits->parameter_space_in_x_2_object();
 //   auto ctr_cv = traits->construct_curve_2_object();
 //   Polynomial x = CGAL::shift(Polynomial(1), 1, 0);
 //   Polynomial y = CGAL::shift(Polynomial(1), 1, 1);
 //   auto cst_x_curve = traits->construct_x_monotone_segment_2_object();
 //   auto curve = ctr_cv(CGAL::ipower(x, 4) + CGAL::ipower(y, 3) - 1);
 //   CGAL::insert(arr, curve);
-//   // CGAL::draw(arr);
+
+//   CGAL::draw_viewer(arr);
 // }
 
-// void draw_rational_arr() {
-//   using AK1 = CGAL::Algebraic_kernel_d_1<CORE::BigInt>;
-//   using Traits = CGAL::Arr_rational_function_traits_2<AK1>;
-//   using Arrangement = CGAL::Arrangement_2<Traits>;
-//   using Polynomial = Traits::Polynomial_1;
-//   using Alg_real = Traits::Algebraic_real_1;
-//   using Bound = Traits::Bound;
+void draw_rational_arr() {
+  using AK1 = CGAL::Algebraic_kernel_d_1<CORE::BigInt>;
+  using Traits = CGAL::Arr_rational_function_traits_2<AK1>;
+  using Arrangement = CGAL::Arrangement_2<Traits>;
+  using ff = AK1::Algebraic_real_1;
+  using Polynomial = Traits::Polynomial_1;
+  using Alg_real = Traits::Algebraic_real_1;
+  using Point_2 = Traits::Point_2;
+  using Bound = Traits::Bound;
+  using FT = AK1::Algebraic_real_1;
 
-//   auto traits = Traits();
-//   auto approx = traits.approximate_2_object();
-//   auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
-//   Arrangement arr;
-//   Polynomial x = CGAL::shift(Polynomial(1), 1);
-//   Polynomial P1 = CGAL::ipower(x, 4) - 6 * x * x + 8;
-//   Alg_real l(Bound(-2.1)), r(Bound(2.1));
-//   auto cv1 = cst_x_curve(P1, l, r);
-//   CGAL::insert(arr, cv1);
-//   // CGAL::draw(arr);
-// }
+  auto traits = Traits();
+  auto approx = traits.approximate_2_object();
+  auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
+  Arrangement arr;
+  Polynomial x = CGAL::shift(Polynomial(1), 1);
+  Polynomial P1 = CGAL::ipower(x, 4) - 6 * x * x + 8;
+  Alg_real l(Bound(-2.1)), r(Bound(2.1));
+  Alg_real w = 1;
+  auto cv1 = cst_x_curve(P1, l, r);
+  CGAL::insert(arr, cv1);
+  boost::multiprecision::mpz_int a = 100;
+
+  CGAL::draw_viewer(arr);
+}
 
 // void draw_spherical_arr() {
 //   using Exact_kernel = CGAL::Exact_predicates_exact_constructions_kernel;
@@ -628,9 +639,6 @@ void draw_circle_segs_arr() {
 //   Point_2 p1 = cst_pt(Direction_3(1, 0, 0));
 // }
 
-using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
-using Point = Kernel::Point_2;
-
 int main() {
   // draw_segments_arr_1();
   // draw_segments_arr_2();
@@ -646,9 +654,8 @@ int main() {
   // draw_linear_arr_5();
   // test_zone();
   // draw_conic_arcs_arr();
-  draw_circle_segs_arr();
   // draw_algebraic_arr();
-  // draw_rational_arr();
   // draw_circle_segs_arr();
+  draw_rational_arr();
   return 0;
 }

@@ -10,6 +10,7 @@
 #include <CGAL/Arr_geodesic_arc_on_sphere_traits_2.h>
 #include <CGAL/Arr_rational_function_traits_2.h>
 #include <CGAL/Arr_algebraic_segment_traits_2.h>
+#include <CGAL/Arr_circular_line_arc_traits_2.h>
 #include <type_traits>
 
 namespace CGAL {
@@ -90,6 +91,30 @@ public:
   constexpr static bool Has_unbounded_curves = false;
   using Point_2 = typename Geom_traits::Point_2;
   using FT = typename Point_2::CoordNT;
+  using X_monotone_curve_2 = typename Geom_traits::X_monotone_curve_2;
+  using Intersect_2 = typename Geom_traits::Intersect_2;
+  using Construct_min_vertex_2 = typename Geom_traits::Construct_min_vertex_2;
+  using Approximate_2 = typename Geom_traits::Approximate_2;
+  using Is_vertical_2 = typename Geom_traits::Is_vertical_2;
+  using Compare_xy_2 = typename Geom_traits::Compare_xy_2;
+};
+
+template <typename Kernel>
+struct Type_traits<Arr_circular_line_arc_traits_2<Kernel>>
+{
+  static_assert(false, "Approximate_2 not yet modeled by this geometry traits class.");
+};
+
+template <typename Kernel>
+struct Type_traits<Arr_rational_function_traits_2<Kernel>>
+{
+private:
+  using Geom_traits = Arr_rational_function_traits_2<Kernel>;
+
+public:
+  constexpr static bool Has_unbounded_curves = true;
+  using Point_2 = typename Geom_traits::Point_2;
+  using FT = typename Geom_traits::Algebraic_real_1;
   using X_monotone_curve_2 = typename Geom_traits::X_monotone_curve_2;
   using Intersect_2 = typename Geom_traits::Intersect_2;
   using Construct_min_vertex_2 = typename Geom_traits::Construct_min_vertex_2;
