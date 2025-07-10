@@ -2,6 +2,7 @@
 #define CGAL_DRAW_AOS_ARR_APPROXIMATE_POINT_2_H
 
 #include "CGAL/Arr_has.h"
+#include "CGAL/Arr_rational_function_traits_2.h"
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
 #include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/number_utils.h"
@@ -27,7 +28,7 @@ public:
   /**
    * @brief Approximate a point.
    * TODO: make it work for spherical traits.
-   *
+   * TODO: this function should be marked const.
    * @param pt
    * @return Point_geom
    */
@@ -43,7 +44,25 @@ public:
   double operator()(const Point_2& pt, int dim) const { return m_approx(pt, dim); }
 
 private:
-  typename GeomTraits::Approximate_2 m_approx;
+  const typename GeomTraits::Approximate_2 m_approx;
+};
+
+// Specialized for Arr_rational_function_traits_2.
+template <typename Kernel>
+class Arr_approximate_point_2_impl<Arr_rational_function_traits_2<Kernel>, true>
+{
+  using Geom_traits = Arr_rational_function_traits_2<Kernel>;
+  using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
+  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
+  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Approximate_2 = typename Geom_traits::Approximate_2;
+
+public:
+  Arr_approximate_point_2_impl(const Geom_traits& traits) {}
+
+  Approx_point operator()(const Point_2& pt) const { return {pt.x().to_double(), pt.y().to_double()}; }
+
+  double operator()(const Point_2& pt, int dim) const { return (dim == 0) ? pt.x().to_double() : pt.y().to_double(); }
 };
 
 // Fallback to use CGAL::to_double for traits that do not have an approximate_2_object.

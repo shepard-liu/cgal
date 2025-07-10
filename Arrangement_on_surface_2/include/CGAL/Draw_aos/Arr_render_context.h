@@ -174,9 +174,8 @@ public:
     std::ofstream ofs_index("/Users/shep/codes/aos_2_js_helper/shapes.txt", std::ios::out | std::ios::trunc);
   }
 
-  Approx_point approx_pt_on_boundary(const Point_2& pt) const {
-    double x = this->approx_pt(pt, 0);
-    double y = this->approx_pt(pt, 1);
+  Approx_point make_on_boundary(const Approx_point& pt) const {
+    double x = pt.x(), y = pt.y();
 
     if(std::abs(x - xmin()) < ep_xmin) {
       x = xmin();
@@ -188,7 +187,7 @@ public:
       y = ymax();
     } else {
       std::cerr << "Failed to match point to the boundary: " << pt << std::endl;
-      std::cerr << "Bbox: " << bbox() << std::endl;
+      std::cerr << "Bbox: " << xmin() << " " << ymin() << ", " << xmax() << " " << ymax() << std::endl;
       // We shall not call this function if not approximated from a boundary point.
       CGAL_assertion(false && "Failed to match point to the boundary");
     }

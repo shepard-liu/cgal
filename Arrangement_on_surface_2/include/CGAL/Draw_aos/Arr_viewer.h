@@ -17,6 +17,7 @@
 #define ARR_VIEWER_H
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 
 #include <boost/iterator/function_output_iterator.hpp>
@@ -69,20 +70,6 @@ private:
     return true;
   }
 
-  Bbox_2 initial_bbox() const {
-    Bbox_2 bbox;
-    Arr_approximate_point_2<Geom_traits> approx_pt(m_arr.traits());
-    for(const auto& vh : m_arr.vertex_handles()) {
-      auto pt = approx_pt(vh->point());
-      bbox += Bbox_2(pt.x(), pt.y(), pt.x(), pt.y());
-    }
-    if(bbox.x_span() == 0 || bbox.y_span() == 0) {
-      // make a default bbox around the degenrate rect
-      bbox = Bbox_2(bbox.xmin() - 1, bbox.ymin() - 1, bbox.xmax() + 1, bbox.ymax() + 1);
-    }
-    return bbox;
-  }
-
   /**
    * @brief Computes the bounding box of the view from orthogonal camera.
    *
@@ -117,9 +104,6 @@ private:
       ymax = std::max(ymax, y);
     }
 
-    if(xmin == xmax || ymin == ymax) {
-      return initial_bbox();
-    }
     return Bbox_2(xmin, ymin, xmax, ymax);
   }
 
@@ -215,15 +199,14 @@ public:
 
   void rerender(Bbox_2 bbox) {
     m_scene.clear();
-    render_arr(bbox);
+    Bbox_2 rounded_bbox(std::floor(bbox.xmin()), std::floor(bbox.ymin()), std::ceil(bbox.xmax()),
+                        std::ceil(bbox.ymax()));
+    render_arr(rounded_bbox);
     Basic_viewer::redraw();
   }
 
   virtual void draw() override {
-    if(init_draw) {
-      init_draw = false;
-      rerender(initial_bbox());
-    } else if(is_camera_changed()) {
+    if(is_camera_changed()) {
       Bbox_2 bbox = view_bbox_from_camera();
       // shrink the bbox by 10% for testing
       double dx = (bbox.xmax() - bbox.xmin()) * 0.1;
@@ -245,7 +228,6 @@ private:
   Feature_portal_map m_feature_portals;
   QMatrix4x4 m_last_proj_matrix;
   QMatrix4x4 m_last_modelview_matrix;
-  bool init_draw = false;
 };
 
 } // namespace draw_aos

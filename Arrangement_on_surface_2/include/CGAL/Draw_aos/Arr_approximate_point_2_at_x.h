@@ -4,6 +4,7 @@
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/type_utils.h"
+#include "CGAL/number_utils.h"
 #include <boost/iterator/function_output_iterator.hpp>
 
 namespace CGAL {
@@ -42,15 +43,6 @@ public:
   std::optional<Approx_point> operator()(const X_monotone_curve_2& curve, FT x) const {
     CGAL_assertion(!m_ctx.is_vertical_2(curve));
 
-    auto min_pt = m_ctx.cst_curve_end(curve, ARR_MIN_END);
-    if(min_pt.has_value() && min_pt->x() == x) {
-      return m_approx(min_pt.value());
-    }
-    auto max_pt = m_ctx.cst_curve_end(curve, ARR_MAX_END);
-    if(max_pt.has_value() && max_pt->x() == x) {
-      return m_approx(max_pt.value());
-    }
-
     using Multiplicity = Geom_traits::Multiplicity;
     using Intersect_point = std::pair<Point_2, Multiplicity>;
     using Intersect_curve = X_monotone_curve_2;
@@ -61,9 +53,16 @@ public:
     auto func_out_iter = boost::make_function_output_iterator([&pt, this](const Intersect_type& res) {
       CGAL_assertion_msg(std::holds_alternative<Intersect_point>(res),
                          "Unexpected intersection type, expected Intersect_point");
+      if(pt.has_value()) {
+        return;
+      }
       pt = this->m_approx(std::get<Intersect_point>(res).first);
     });
-    m_ctx.intersect_2(curve, vertical_line, func_out_iter);
+    m_ctx.intersect_2(vertical_line, curve, func_out_iter);
+
+    if(pt.has_value()) {
+      pt = Approx_point(CGAL::to_double(x), pt->y());
+    }
     return pt;
   }
 

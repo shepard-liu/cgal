@@ -123,6 +123,25 @@ public:
   using Compare_xy_2 = typename Geom_traits::Compare_xy_2;
 };
 
+template <typename GeomTraits>
+class Construct_coordinate
+{
+  using FT = typename Type_traits<GeomTraits>::FT;
+
+public:
+  FT operator()(double val) const { return FT(val); }
+};
+
+template <typename Kernel>
+class Construct_coordinate<Arr_rational_function_traits_2<Kernel>>
+{
+  using FT = typename Type_traits<Arr_rational_function_traits_2<Kernel>>::FT;
+  using Bound = typename Kernel::Bound;
+
+public:
+  FT operator()(double val) const { return FT(Bound(val)); }
+};
+
 } // namespace draw_aos
 } // namespace CGAL
 

@@ -52,26 +52,27 @@ private:
   // decomposition).
   static Point_2 upper_intersection(const Geom_traits& traits, const Point_2& pt, const X_monotone_curve_2& curve) {
     Arr_construct_vertical_segment cst_vertical_segment(traits);
-    Point_2 intersection_point;
     auto intersect = traits.intersect_2_object();
     auto vertical_line = cst_vertical_segment(pt.x(), pt.y(), std::numeric_limits<double>::max());
-    bool found_intersection = false;
 
     using Multiplicity = Geom_traits::Multiplicity;
     using Intersect_point = std::pair<Point_2, Multiplicity>;
     using Intersect_curve = X_monotone_curve_2;
     using Intersect_type = std::variant<Intersect_point, Intersect_curve>;
 
-    intersect(curve, vertical_line, boost::make_function_output_iterator([&](const Intersect_type& res) {
-                found_intersection = true;
-                if(std::holds_alternative<Intersect_point>(res)) {
-                  intersection_point = std::get<Intersect_point>(res).first;
-                  return;
+    std::optional<Point_2> intersection_point;
+    intersect(curve, vertical_line,
+              boost::make_function_output_iterator([&intersection_point](const Intersect_type& res) {
+                if(!std::holds_alternative<Intersect_point>(res)) {
+                  CGAL_assertion(false && "Unexpected intersection type");
                 }
-                CGAL_assertion(false && "Unexpected intersection type");
+                intersection_point = std::get<Intersect_point>(res).first;
               }));
-
-    return found_intersection ? intersection_point : Point_2(pt.x(), std::numeric_limits<double>::max());
+    if(!intersection_point.has_value()) {
+      CGAL_error_msg("No intersection found for the vertical ray shooted from the point");
+      return pt; // Fallback to the original point if no intersection is found.
+    }
+    return intersection_point.value();
   }
 
 public:
@@ -105,7 +106,7 @@ public:
         if(above_vh->is_at_open_boundary()) {
           it->second.emplace_back(std::nullopt, vh);
         } else {
-          it->second.emplace_back(approx_pt((above_vh)->point()), vh);
+          it->second.emplace_back(approx_pt(above_vh->point()), vh);
         }
       } else if(Halfedge_const_handle above_he; CGAL::assign(above_he, above_feat)) {
         if(conn.is_connected((above_he)->source(), vh)) {

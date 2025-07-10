@@ -2,8 +2,7 @@
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_CURVE_2_H
 
 #include "CGAL/Arr_enums.h"
-#include "CGAL/Draw_aos/Arr_bounded_approximate_point_2.h"
-#include "CGAL/Draw_aos/Arr_compute_y_at_x.h"
+#include "CGAL/Draw_aos/Arr_approximate_point_2_at_x.h"
 #include "CGAL/Draw_aos/Arr_construct_curve_end.h"
 #include "CGAL/Draw_aos/Arr_construct_segments.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
@@ -11,7 +10,6 @@
 #include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
 #include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/basic.h"
-#include "CGAL/number_utils.h"
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
@@ -47,25 +45,23 @@ class Arr_bounded_approximate_curve_2
   {
     Execution_context(const Arr_bounded_render_context& ctx,
                       const X_monotone_curve_2& curve,
-                      const Arr_approximate_point_2<Geom_traits>& approx_pt,
-                      const Arr_compute_point_2_at_x& compute_y_at_x,
+                      const Arr_approximate_point_2_at_x& approx_pt_at_x,
                       const Intersections_vector& top_inters,
                       const Intersections_vector& bottom_inters,
                       Polyline_geom& polyline)
         : Arr_context_delegator(ctx)
         , curve(curve)
-        , compute_pt_at_x(compute_y_at_x)
-        , approx_pt(approx_pt)
+        , m_approx_pt_at_x(approx_pt_at_x)
         , top_inters(top_inters)
         , bottom_inters(bottom_inters)
         , out_it(std::back_inserter(polyline)) {
       auto min_end_pt = Arr_construct_curve_end<Geom_traits>(ctx.traits)(curve, ARR_MIN_END);
       if(min_end_pt.has_value()) {
-        min_end = approx_pt(min_end_pt.value());
+        min_end = (*this)->approx_pt(min_end_pt.value());
       }
       auto max_end_pt = Arr_construct_curve_end<Geom_traits>(ctx.traits)(curve, ARR_MAX_END);
       if(max_end_pt.has_value()) {
-        max_end = approx_pt(max_end_pt.value());
+        max_end = (*this)->approx_pt(max_end_pt.value());
       }
       txmin = is_min_end_bounded() ? std::clamp(min_end->x(), ctx.xmin(), ctx.xmax()) : ctx.xmin();
       txmax = is_max_end_bounded() ? std::clamp(max_end->x(), ctx.xmin(), ctx.xmax()) : ctx.xmax();
@@ -77,14 +73,25 @@ class Arr_bounded_approximate_curve_2
     bool is_min_end_bounded() const { return min_end.has_value(); }
     bool is_max_end_bounded() const { return max_end.has_value(); }
     bool is_bounded_curve() const { return is_min_end_bounded() && is_max_end_bounded(); }
+    std::optional<Approx_point> approx_pt_at_x(double x) const {
+      if(x == txmin && is_min_end_bounded() && (*this)->contains_x(min_end->x())) {
+        return min_end;
+      }
+      if(x == txmax && is_max_end_bounded() && (*this)->contains_x(max_end->x())) {
+        return max_end;
+      }
+      return m_approx_pt_at_x(curve, to_ft(x));
+    }
 
     const X_monotone_curve_2& curve;
-    const Arr_compute_point_2_at_x& compute_pt_at_x;
-    const Arr_approximate_point_2<Geom_traits>& approx_pt;
     const Intersections_vector &top_inters, bottom_inters;
     std::optional<Approx_point> min_end, max_end;
     double txmin, txmax, tymin, tymax;
     std::back_insert_iterator<Polyline_geom> out_it;
+    const Construct_coordinate<Geom_traits> to_ft;
+
+  private:
+    const Arr_approximate_point_2_at_x& m_approx_pt_at_x;
   };
 
 private:
@@ -92,8 +99,8 @@ private:
                                                     const X_monotone_curve_2& cv2,
                                                     const typename Geom_traits::Intersect_2& intersect_2,
                                                     const Arr_construct_curve_end<Geom_traits>& cst_curve_end) {
-    using Intersect_point = std::pair<Type_traits<Geom_traits>::Point_2, Geom_traits::Multiplicity>;
-    using Intersect_curve = Geom_traits::X_monotone_curve_2;
+    using Intersect_point = std::pair<Point_2, Geom_traits::Multiplicity>;
+    using Intersect_curve = X_monotone_curve_2;
     using Intersect_type = std::variant<Intersect_point, Intersect_curve>;
 
     std::vector<Point_2> intersections;
@@ -113,17 +120,17 @@ private:
     return intersections;
   }
 
-  static std::optional<Point_2> first_intersection(Execution_context& ctx) {
+  static std::optional<Approx_point> first_intersection(Execution_context& ctx) {
     if(!ctx.top_inters.empty() && !ctx.bottom_inters.empty()) {
-      return ctx->compare_xy_2(ctx.top_inters.front(), ctx.bottom_inters.front()) == CGAL::SMALLER
-                 ? ctx.top_inters.front()
-                 : ctx.bottom_inters.front();
+      return ctx->approx_pt(ctx->compare_xy_2(ctx.top_inters.front(), ctx.bottom_inters.front()) == CGAL::SMALLER
+                                ? ctx.top_inters.front()
+                                : ctx.bottom_inters.front());
     }
     if(!ctx.top_inters.empty()) {
-      return ctx.top_inters.front();
+      return ctx->approx_pt(ctx.top_inters.front());
     }
     if(!ctx.bottom_inters.empty()) {
-      return ctx.bottom_inters.front();
+      return ctx->approx_pt(ctx.bottom_inters.front());
     }
     return std::nullopt;
   }
@@ -139,18 +146,17 @@ private:
    */
   static void approximate_simple_curve_segment(Execution_context& ctx, double start, double end, double step) {
     for(double x = start + step; x <= end - step; x += step) {
-      auto pt = ctx.compute_pt_at_x(ctx.curve, FT(x));
+      auto pt = ctx.approx_pt_at_x(x);
       if(!pt.has_value()) {
         // break as soon as there's no more intersections
         break;
       }
-      auto approx_pt = ctx->approx_pt(pt.value());
-      if(approx_pt.y() == ctx->ymin() || approx_pt.y() == ctx->ymax()) {
+      if(pt->y() == ctx->ymin() || pt->y() == ctx->ymax()) {
         // The segment overlaps with the bbox edge. There's no need to insert a dummy point.
         break;
       }
-      *ctx.out_it++ = approx_pt;
-      if(!ctx->contains_y(approx_pt.y())) {
+      *ctx.out_it++ = pt.value();
+      if(!ctx->contains_y(pt->y())) {
         // We are outside the bbox. The dummy point was already inserted to indicate that.
         break;
       }
@@ -176,19 +182,18 @@ private:
     }
     // Now we gaurantee that the curve has at least two points within the bbox in y direction.
     // We have to obtain the x coordinate of this vertical curve.
-    double x = ctx.is_bounded_curve() ? ctx.min_end->x() : ctx->approx_pt(first_intersection(ctx).value(), 0);
+    double x = ctx.is_bounded_curve() ? ctx.min_end->x() : first_intersection(ctx).value().x();
     *ctx.out_it++ = Approx_point(x, ctx.tymin);
     *ctx.out_it++ = Approx_point(x, ctx.tymax);
   }
 
 public:
-  Arr_bounded_approximate_curve_2(const Arr_bounded_render_context& ctx,
-                                  const Arr_approximate_point_2<Geom_traits>& point_approx)
-      : m_compute_y_at_x(ctx)
-      , m_approx_pt(point_approx)
+  Arr_bounded_approximate_curve_2(const Arr_bounded_render_context& ctx)
+      : to_ft()
       , m_ctx(ctx)
-      , m_top(ctx.cst_horizontal_segment(FT(ctx.ymax()), FT(ctx.xmin()), FT(ctx.xmax())))
-      , m_bottom(ctx.cst_horizontal_segment(FT(ctx.ymin()), FT(ctx.xmin()), FT(ctx.xmax()))) {}
+      , m_approx_pt_at_x(ctx)
+      , m_top(ctx.cst_horizontal_segment(to_ft(ctx.ymax()), to_ft(ctx.xmin()), to_ft(ctx.xmax())))
+      , m_bottom(ctx.cst_horizontal_segment(to_ft(ctx.ymin()), to_ft(ctx.xmin()), to_ft(ctx.xmax()))) {}
 
   /**
    * @brief Approximate an x-monotone curve from left to right within the bounding box.
@@ -210,9 +215,9 @@ public:
 
     const X_monotone_curve_2& curve = he->curve();
 
-    auto top_inters = compute_intersections(curve, m_top, m_ctx.intersect_2, m_ctx.cst_curve_end);
-    auto bottom_inters = compute_intersections(curve, m_bottom, m_ctx.intersect_2, m_ctx.cst_curve_end);
-    Execution_context ctx(m_ctx, curve, m_approx_pt, m_compute_y_at_x, top_inters, bottom_inters, polyline);
+    auto top_inters = compute_intersections(m_top, curve, m_ctx.intersect_2, m_ctx.cst_curve_end);
+    auto bottom_inters = compute_intersections(m_bottom, curve, m_ctx.intersect_2, m_ctx.cst_curve_end);
+    Execution_context ctx(m_ctx, curve, m_approx_pt_at_x, top_inters, bottom_inters, polyline);
 
     if(ctx->is_vertical_2(curve)) {
       approximate_vertical_curve(ctx);
@@ -221,17 +226,16 @@ public:
 
     polyline.reserve(top_inters.size() + bottom_inters.size());
 
-    FT last_x;
-    std::optional<Point_2> first_inter = first_intersection(ctx);
+    double last_x;
+    std::optional<Approx_point> first_inter = first_intersection(ctx);
 
-    if(auto pt_at_txmin = ctx.compute_pt_at_x(curve, FT(ctx.txmin));
-       pt_at_txmin.has_value() && pt_at_txmin->y() != ctx.ymin && pt_at_txmin->y() != ctx.ymax)
+    if(auto pt_at_txmin = ctx.approx_pt_at_x(ctx.txmin);
+       pt_at_txmin.has_value() && pt_at_txmin->y() != ctx->ymin() && pt_at_txmin->y() != ctx->ymax())
     {
       // The tight starting point of the curve is within the bbox and
       // it's not on the top or bottom edge.
-      *ctx.out_it++ =
-          ctx.txmin == ctx.xmin ? ctx->approx_pt_on_boundary(pt_at_txmin.value()) : ctx->approx_pt(pt_at_txmin.value());
-      FT segment_end = first_inter.has_value() ? first_inter->x() : ctx.txmax;
+      *ctx.out_it++ = ctx.txmin == ctx->xmin() ? ctx->make_on_boundary(pt_at_txmin.value()) : pt_at_txmin.value();
+      double segment_end = first_inter.has_value() ? first_inter->x() : ctx.txmax;
       approximate_simple_curve_segment(ctx, ctx.txmin, segment_end, ctx->approx_error);
       last_x = segment_end;
     } else if(first_inter.has_value()) {
@@ -243,27 +247,32 @@ public:
     // iterate through the intersections and insert segments in-between.
     std::merge(top_inters.begin(), top_inters.end(), bottom_inters.begin(), bottom_inters.end(),
                boost::make_function_output_iterator([&last_x, &ctx](const Point_2& inter) {
-                 approximate_simple_curve_segment(ctx, last_x, inter.x(), FT(ctx->approx_error));
-                 *ctx.out_it++ = ctx->approx_pt_on_boundary(inter);
-                 last_x = inter.x();
+                 auto approx_inter = ctx->approx_pt(inter);
+                 approximate_simple_curve_segment(ctx, last_x, approx_inter.x(), ctx->approx_error);
+                 *ctx.out_it++ = ctx->make_on_boundary(approx_inter);
+                 last_x = approx_inter.x();
                }),
                [&ctx](const Point_2& pt1, const Point_2& pt2) { return ctx->compare_xy_2(pt1, pt2) == CGAL::SMALLER; });
 
-    if(auto pt_at_txmax = ctx.compute_pt_at_x(curve, ctx.txmax);
-       pt_at_txmax.has_value() && pt_at_txmax->y() != ctx.ymin && pt_at_txmax->y() != ctx.ymax)
+    if(auto pt_at_txmax = ctx.approx_pt_at_x(ctx.txmax);
+       pt_at_txmax.has_value() && pt_at_txmax->y() != ctx->ymin() && pt_at_txmax->y() != ctx->ymax())
     {
-      approximate_simple_curve_segment(ctx, last_x, ctx.txmax, FT(ctx->approx_error));
-      *ctx.out_it++ =
-          ctx.txmax == ctx.xmax ? ctx->approx_pt_on_boundary(pt_at_txmax.value()) : ctx->approx_pt(pt_at_txmax.value());
+      approximate_simple_curve_segment(ctx, last_x, ctx.txmax, ctx->approx_error);
+      *ctx.out_it++ = ctx.txmax == ctx->xmax() ? ctx->make_on_boundary(pt_at_txmax.value()) : pt_at_txmax.value();
+    }
+
+    std::cout << "Approximate curve: " << std::endl;
+    for(const auto& pt : polyline) {
+      std::cout << "Point: (" << pt.x() << ", " << pt.y() << ")" << std::endl;
     }
 
     return polyline;
   }
 
 private:
+  const Construct_coordinate<Geom_traits> to_ft;
   const Arr_bounded_render_context& m_ctx;
-  const Arr_approximate_point_2<Geom_traits>& m_approx_pt;
-  const Arr_compute_point_2_at_x m_compute_y_at_x;
+  const Arr_approximate_point_2_at_x m_approx_pt_at_x;
   const X_monotone_curve_2 m_top;
   const X_monotone_curve_2 m_bottom;
 };

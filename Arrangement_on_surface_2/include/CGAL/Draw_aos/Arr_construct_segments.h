@@ -4,6 +4,7 @@
 #include "CGAL/Arr_circular_line_arc_traits_2.h"
 #include "CGAL/Draw_aos/helpers.h"
 #include "CGAL/Draw_aos/type_utils.h"
+#include "CGAL/Polynomial_traits_d.h"
 #include "CGAL/number_utils.h"
 #include <limits>
 namespace CGAL {
@@ -45,16 +46,13 @@ class Arr_construct_segment_impl<Arr_circle_segment_traits_2<Kernel>, false>
   using NT = typename Type_traits<Geom_traits>::FT;
   using FT = typename Kernel::FT;
 
-private:
-  static FT to_ft(NT v) { return v.a0() + v.a1() * CGAL::sqrt(v.root()); }
-
 public:
   Arr_construct_segment_impl(const Geom_traits& traits) {}
 
   X_monotone_curve_2 operator()(NT x1, NT y1, NT x2, NT y2) const {
     using Kernel_point_2 = typename Kernel::Point_2;
-    FT kx1 = to_ft(x1), ky1 = to_ft(y1), kx2 = to_ft(x2), ky2 = to_ft(y2);
-    return X_monotone_curve_2(Kernel_point_2(kx1, ky1), Kernel_point_2(kx2, ky2));
+    return X_monotone_curve_2(Kernel_point_2(CGAL::to_double(x1), CGAL::to_double(y1)),
+                              Kernel_point_2(CGAL::to_double(x2), CGAL::to_double(y2)));
   }
 };
 
@@ -109,20 +107,25 @@ class Arr_construct_vertical_segment<Arr_rational_function_traits_2<Kernel>>
   using Geom_traits = Arr_rational_function_traits_2<Kernel>;
   using Point_2 = typename Type_traits<Geom_traits>::Point_2;
   using X_monotone_curve_2 = typename Type_traits<Geom_traits>::X_monotone_curve_2;
+  using Construct_x_monotone_curve_2 = typename Geom_traits::Construct_x_monotone_curve_2;
   using FT = typename Type_traits<Geom_traits>::FT;
   using Polynomial_1 = typename Geom_traits::Polynomial_1;
 
 public:
-  Arr_construct_vertical_segment(const Geom_traits&) {}
+  Arr_construct_vertical_segment(const Geom_traits& traits)
+      : m_cst_x_curve(traits.construct_x_monotone_curve_2_object()) {}
 
   X_monotone_curve_2 operator()(FT x0, FT ymin, FT ymax) const {
     // We could only construct a near vertical segment
-    Polynomial_1 x(0, 1);
-    FT k = 1e8;
-    FT xmin = ymin / k + x0;
-    FT xmax = ymax / k + x0;
-    return X_monotone_curve_2(k * (x - x0), xmin, xmax);
+    Polynomial_1 x = CGAL::shift(Polynomial_1(1), 1);
+    double k = 100;
+    double xmin = ymin.to_double() / k + x0.to_double();
+    double xmax = ymax.to_double() / k + x0.to_double();
+    return m_cst_x_curve(k * (x - x0.to_double()), xmin, xmax);
   }
+
+private:
+  Construct_x_monotone_curve_2 m_cst_x_curve;
 };
 
 // Arr_construct_horizontal_segment Specialization for Arr_rational_function_traits_2
@@ -134,14 +137,19 @@ class Arr_construct_horizontal_segment<Arr_rational_function_traits_2<Kernel>>
   using X_monotone_curve_2 = typename Type_traits<Geom_traits>::X_monotone_curve_2;
   using FT = typename Type_traits<Geom_traits>::FT;
   using Polynomial_1 = typename Geom_traits::Polynomial_1;
+  using Construct_x_monotone_curve_2 = typename Geom_traits::Construct_x_monotone_curve_2;
 
 public:
-  Arr_construct_horizontal_segment(const Geom_traits&) {}
+  Arr_construct_horizontal_segment(const Geom_traits& traits)
+      : m_cst_x_curve(traits.construct_x_monotone_curve_2_object()) {}
 
   X_monotone_curve_2 operator()(FT y, FT xmin, FT xmax) const {
-    Polynomial_1 p = y;
-    return X_monotone_curve_2(p, xmin, xmax);
+    Polynomial_1 p(y.to_double());
+    return m_cst_x_curve(p, xmin, xmax);
   }
+
+private:
+  Construct_x_monotone_curve_2 m_cst_x_curve;
 };
 
 } // namespace draw_aos

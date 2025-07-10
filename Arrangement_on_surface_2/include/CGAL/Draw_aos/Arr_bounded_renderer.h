@@ -74,7 +74,7 @@ class Arr_bounded_renderer
     Execution_context(const Arr_bounded_render_context& ctx)
         : Arr_context_delegator(ctx)
         , bounded_approx_pt(ctx)
-        , bounded_approx_curve(ctx, bounded_approx_pt)
+        , bounded_approx_curve(ctx)
         , bounded_approx_face(ctx, bounded_approx_pt, bounded_approx_curve) {}
 
     const Arr_bounded_approximate_point_2 bounded_approx_pt;
@@ -165,6 +165,7 @@ private:
 public:
   Arr_bounded_renderer(Arr_render_context& ctx, Bbox_2 bbox)
       : m_ctx(ctx)
+      , to_ft()
       , m_bbox(bbox) {}
 
   Arr_approximation_cache render() const {
@@ -179,10 +180,10 @@ public:
 
     Execution_context ctx(Arr_bounded_render_context(m_ctx, m_bbox, cache));
 
-    auto top = ctx->cst_horizontal_segment(FT(ctx->ymax()), FT(ctx->xmin()), FT(ctx->xmax()));
-    auto bottom = ctx->cst_horizontal_segment(FT(ctx->ymin()), FT(ctx->xmin()), FT(ctx->xmax()));
-    auto left = ctx->cst_vertical_segment(FT(ctx->xmin()), FT(ctx->ymin()), FT(ctx->ymax()));
-    auto right = ctx->cst_vertical_segment(FT(ctx->xmax()), FT(ctx->ymin()), FT(ctx->ymax()));
+    auto top = ctx->cst_horizontal_segment(to_ft(ctx->ymax()), to_ft(ctx->xmin()), to_ft(ctx->xmax()));
+    auto bottom = ctx->cst_horizontal_segment(to_ft(ctx->ymin()), to_ft(ctx->xmin()), to_ft(ctx->xmax()));
+    auto left = ctx->cst_vertical_segment(to_ft(ctx->xmin()), to_ft(ctx->ymin()), to_ft(ctx->ymax()));
+    auto right = ctx->cst_vertical_segment(to_ft(ctx->xmax()), to_ft(ctx->ymin()), to_ft(ctx->ymax()));
 
     // top, left are open edges while bottom, right are closed.
     approx_intersecting_features(ctx, top, Feature_type::Face);
@@ -194,7 +195,8 @@ public:
   }
 
 private:
-  Arr_render_context m_ctx;
+  const Arr_render_context& m_ctx;
+  const Construct_coordinate<Geom_traits> to_ft;
   const Bbox_2 m_bbox;
 };
 

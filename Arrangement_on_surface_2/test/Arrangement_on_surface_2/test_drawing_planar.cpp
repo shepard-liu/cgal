@@ -22,6 +22,7 @@
 #include <iostream>
 #include "CGAL/Exact_predicates_exact_constructions_kernel.h"
 #include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
+#include "CGAL/NT_converter.h"
 #include "CGAL/number_utils.h"
 #include <CGAL/draw_arrangement_2.h>
 #include <vector>
@@ -607,19 +608,45 @@ void draw_rational_arr() {
   using Point_2 = Traits::Point_2;
   using Bound = Traits::Bound;
   using FT = AK1::Algebraic_real_1;
+  using Intersect_2 = Traits::Intersect_2;
+  using X_monotone_curve_2 = Traits::X_monotone_curve_2;
 
-  auto traits = Traits();
-  auto approx = traits.approximate_2_object();
-  auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
   Arrangement arr;
-  Polynomial x = CGAL::shift(Polynomial(1), 1);
-  Polynomial P1 = CGAL::ipower(x, 4) - 6 * x * x + 8;
-  Alg_real l(Bound(-2.1)), r(Bound(2.1));
-  Alg_real w = 1;
-  auto cv1 = cst_x_curve(P1, l, r);
-  CGAL::insert(arr, cv1);
-  boost::multiprecision::mpz_int a = 100;
+  const Traits& traits = *arr.traits();
+  auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
+  // Polynomial topP(1.5);
+  // auto top = cst_x_curve(topP, Alg_real(Bound(-5)), Alg_real(Bound(5)));
+  // Polynomial x = CGAL::shift(Polynomial(1), 1);
+  // Polynomial P1 = CGAL::ipower(x, 4);
+  // auto cv = cst_x_curve(P1, Alg_real(Bound(-5)), Alg_real(Bound(5)));
+  // auto intersect = traits.intersect_2_object();
+  // std::vector<Point_2> points;
 
+  // using Intersect_point = std::pair<Point_2, Traits::Multiplicity>;
+  // using Intersect_curve = X_monotone_curve_2;
+  // using Intersect_type = std::variant<Intersect_point, Intersect_curve>;
+
+  // intersect(cv, top, boost::make_function_output_iterator([&points](const Intersect_type& res) {
+  //             if(std::holds_alternative<Intersect_point>(res)) {
+  //               const Intersect_point& ip = std::get<Intersect_point>(res);
+  //               points.push_back(ip.first);
+  //             }
+  //           }));
+
+  // std::cout << "Intersection points: " << points.size() << std::endl;
+  // for(const auto& p : points) {
+  //   std::cout << "Point: (" << p.x().to_double() << ", " << p.y().to_double() << ")" << std::endl;
+  // }
+
+  auto approx = traits.approximate_2_object();
+  Polynomial x = CGAL::shift(Polynomial(1), 1);
+  Polynomial P1 = CGAL::ipower(x, 2); // - 6 * x * x + 8;
+  Alg_real l(Bound(-2.1)), r(Bound(2.1));
+  Alg_real w(0.2142415);
+  std::cout << "l" << l.to_double() << std::endl;
+  // auto cv1 = cst_x_curve(P1, l, r);
+  auto cv1 = cst_x_curve(P1);
+  CGAL::insert(arr, cv1);
   CGAL::draw_viewer(arr);
 }
 
@@ -646,7 +673,6 @@ int main() {
   // draw_segments_arr_4();
   // draw_segments_arr_5();
   // draw_segments_arr_6();
-  // draw_segments_arr_6();
   // draw_linear_arr_1();
   // draw_linear_arr_2();
   // draw_linear_arr_3();
@@ -654,7 +680,6 @@ int main() {
   // draw_linear_arr_5();
   // test_zone();
   // draw_conic_arcs_arr();
-  // draw_algebraic_arr();
   // draw_circle_segs_arr();
   draw_rational_arr();
   return 0;
