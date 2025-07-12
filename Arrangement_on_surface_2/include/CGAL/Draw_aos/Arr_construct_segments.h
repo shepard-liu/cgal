@@ -1,12 +1,12 @@
 #ifndef CGAL_DRAW_AOS_ARR_CONSTRUCT_SEGMENTS_H
 #define CGAL_DRAW_AOS_ARR_CONSTRUCT_SEGMENTS_H
-#include "CGAL/Arr_circle_segment_traits_2.h"
-#include "CGAL/Arr_circular_line_arc_traits_2.h"
-#include "CGAL/Draw_aos/helpers.h"
-#include "CGAL/Draw_aos/type_utils.h"
-#include "CGAL/Polynomial_traits_d.h"
-#include "CGAL/number_utils.h"
-#include <limits>
+
+#include "CGAL/CORE/BigRat.h"
+#include <CGAL/Arr_circle_segment_traits_2.h>
+#include <CGAL/number_utils.h>
+#include <CGAL/Polynomial_traits_d.h>
+#include <CGAL/Draw_aos/type_utils.h>
+
 namespace CGAL {
 namespace draw_aos {
 
@@ -17,10 +17,10 @@ class Arr_construct_segment_impl;
 template <typename GeomTraits>
 class Arr_construct_segment_impl<GeomTraits, true>
 {
-  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<GeomTraits>::X_monotone_curve_2;
+  using Point_2 = typename Traits_adaptor<GeomTraits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<GeomTraits>::X_monotone_curve_2;
   using Construct_x_monotone_curve_2 = typename GeomTraits::Construct_x_monotone_curve_2;
-  using FT = typename Type_traits<GeomTraits>::FT;
+  using FT = typename Traits_adaptor<GeomTraits>::FT;
 
 public:
   Arr_construct_segment_impl(const GeomTraits& traits)
@@ -39,11 +39,11 @@ template <typename Kernel>
 class Arr_construct_segment_impl<Arr_circle_segment_traits_2<Kernel>, false>
 {
   using Geom_traits = Arr_circle_segment_traits_2<Kernel>;
-  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<Geom_traits>::X_monotone_curve_2;
+  using Point_2 = typename Traits_adaptor<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<Geom_traits>::X_monotone_curve_2;
   using Line_2 = typename X_monotone_curve_2::Line_2;
   using Approximate_2 = typename Geom_traits::Approximate_2;
-  using NT = typename Type_traits<Geom_traits>::FT;
+  using NT = typename Traits_adaptor<Geom_traits>::FT;
   using FT = typename Kernel::FT;
 
 public:
@@ -69,9 +69,9 @@ using Arr_construct_segment =
 template <typename GeomTraits>
 class Arr_construct_vertical_segment
 {
-  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<GeomTraits>::X_monotone_curve_2;
-  using FT = typename Type_traits<GeomTraits>::FT;
+  using Point_2 = typename Traits_adaptor<GeomTraits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<GeomTraits>::X_monotone_curve_2;
+  using FT = typename Traits_adaptor<GeomTraits>::FT;
 
 public:
   Arr_construct_vertical_segment(const GeomTraits& traits)
@@ -86,9 +86,9 @@ private:
 template <typename GeomTraits>
 class Arr_construct_horizontal_segment
 {
-  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<GeomTraits>::X_monotone_curve_2;
-  using FT = typename Type_traits<GeomTraits>::FT;
+  using Point_2 = typename Traits_adaptor<GeomTraits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<GeomTraits>::X_monotone_curve_2;
+  using FT = typename Traits_adaptor<GeomTraits>::FT;
 
 public:
   Arr_construct_horizontal_segment(const GeomTraits& traits)
@@ -105,27 +105,30 @@ template <typename Kernel>
 class Arr_construct_vertical_segment<Arr_rational_function_traits_2<Kernel>>
 {
   using Geom_traits = Arr_rational_function_traits_2<Kernel>;
-  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<Geom_traits>::X_monotone_curve_2;
+  using Point_2 = typename Traits_adaptor<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<Geom_traits>::X_monotone_curve_2;
   using Construct_x_monotone_curve_2 = typename Geom_traits::Construct_x_monotone_curve_2;
-  using FT = typename Type_traits<Geom_traits>::FT;
+  using FT = typename Traits_adaptor<Geom_traits>::FT;
   using Polynomial_1 = typename Geom_traits::Polynomial_1;
 
 public:
-  Arr_construct_vertical_segment(const Geom_traits& traits)
-      : m_cst_x_curve(traits.construct_x_monotone_curve_2_object()) {}
+  Arr_construct_vertical_segment(const Geom_traits&) {}
 
   X_monotone_curve_2 operator()(FT x0, FT ymin, FT ymax) const {
-    // We could only construct a near vertical segment
+    Geom_traits traits;
+    auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
+
+    // We could only construct a near vertical segment when dealing with rational functions.
     Polynomial_1 x = CGAL::shift(Polynomial_1(1), 1);
+    Polynomial_1 x0_num(CORE::numerator(x0.lower()));
+    Polynomial_1 x0_denum(CORE::denominator(x0.lower()));
     double k = 100;
     double xmin = ymin.to_double() / k + x0.to_double();
     double xmax = ymax.to_double() / k + x0.to_double();
-    return m_cst_x_curve(k * (x - x0.to_double()), xmin, xmax);
+    Polynomial_1 p_num = x0_num * k * x - k * x0_denum;
+    Polynomial_1 p_denum = x0_denum;
+    return cst_x_curve(p_num, p_denum, xmin, xmax);
   }
-
-private:
-  Construct_x_monotone_curve_2 m_cst_x_curve;
 };
 
 // Arr_construct_horizontal_segment Specialization for Arr_rational_function_traits_2
@@ -133,23 +136,26 @@ template <typename Kernel>
 class Arr_construct_horizontal_segment<Arr_rational_function_traits_2<Kernel>>
 {
   using Geom_traits = Arr_rational_function_traits_2<Kernel>;
-  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
-  using X_monotone_curve_2 = typename Type_traits<Geom_traits>::X_monotone_curve_2;
-  using FT = typename Type_traits<Geom_traits>::FT;
+  using Point_2 = typename Traits_adaptor<Geom_traits>::Point_2;
+  using X_monotone_curve_2 = typename Traits_adaptor<Geom_traits>::X_monotone_curve_2;
+  using FT = typename Traits_adaptor<Geom_traits>::FT;
   using Polynomial_1 = typename Geom_traits::Polynomial_1;
   using Construct_x_monotone_curve_2 = typename Geom_traits::Construct_x_monotone_curve_2;
 
 public:
-  Arr_construct_horizontal_segment(const Geom_traits& traits)
-      : m_cst_x_curve(traits.construct_x_monotone_curve_2_object()) {}
+  Arr_construct_horizontal_segment(const Geom_traits&) {}
 
   X_monotone_curve_2 operator()(FT y, FT xmin, FT xmax) const {
-    Polynomial_1 p(y.to_double());
-    return m_cst_x_curve(p, xmin, xmax);
+    // The traits object is stateful. Currently there's a problem with internal cache that an exception will be
+    // triggered after constructing a number of segments.
+    // So we create a new traits object instead of reusing an old one.
+    Geom_traits traits;
+    auto cst_x_curve = traits.construct_x_monotone_curve_2_object();
+    // TODO: only works for CORE now, support other number types
+    Polynomial_1 num(CORE::numerator(y.lower()));
+    Polynomial_1 denum(CORE::denominator(y.lower()));
+    return cst_x_curve(num, denum, xmin, xmax);
   }
-
-private:
-  Construct_x_monotone_curve_2 m_cst_x_curve;
 };
 
 } // namespace draw_aos

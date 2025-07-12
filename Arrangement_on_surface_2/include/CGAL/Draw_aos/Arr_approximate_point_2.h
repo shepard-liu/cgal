@@ -3,9 +3,8 @@
 
 #include "CGAL/Arr_has.h"
 #include "CGAL/Arr_rational_function_traits_2.h"
-#include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
-#include "CGAL/Draw_aos/type_utils.h"
 #include "CGAL/number_utils.h"
+#include "CGAL/Draw_aos/type_utils.h"
 
 namespace CGAL {
 namespace draw_aos {
@@ -17,9 +16,9 @@ class Arr_approximate_point_2_impl;
 template <typename GeomTraits>
 class Arr_approximate_point_2_impl<GeomTraits, true>
 {
-  using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
-  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Approx_traits = Arr_approximation_geometry_traits<GeomTraits>;
+  using Point_2 = typename Traits_adaptor<GeomTraits>::Point_2;
+  using Approx_point = typename Approx_traits::Approx_point;
 
 public:
   Arr_approximate_point_2_impl(const GeomTraits& traits)
@@ -28,7 +27,6 @@ public:
   /**
    * @brief Approximate a point.
    * TODO: make it work for spherical traits.
-   * TODO: this function should be marked const.
    * @param pt
    * @return Point_geom
    */
@@ -52,9 +50,9 @@ template <typename Kernel>
 class Arr_approximate_point_2_impl<Arr_rational_function_traits_2<Kernel>, true>
 {
   using Geom_traits = Arr_rational_function_traits_2<Kernel>;
-  using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Type_traits<Geom_traits>::Point_2;
-  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Approx_traits = Arr_approximation_geometry_traits<Geom_traits>;
+  using Point_2 = typename Traits_adaptor<Geom_traits>::Point_2;
+  using Approx_point = typename Approx_traits::Approx_point;
   using Approximate_2 = typename Geom_traits::Approximate_2;
 
 public:
@@ -69,9 +67,9 @@ public:
 template <typename GeomTraits>
 class Arr_approximate_point_2_impl<GeomTraits, false>
 {
-  using Approx_kernel = Arr_approximation_geometry_traits::Approximation_kernel;
-  using Point_2 = typename Type_traits<GeomTraits>::Point_2;
-  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Approx_traits = Arr_approximation_geometry_traits<GeomTraits>;
+  using Point_2 = typename Traits_adaptor<GeomTraits>::Point_2;
+  using Approx_point = typename Approx_traits::Approx_point;
 
 public:
   // traits object is not used in the fallback implementation, but we keep it for consistency.
@@ -108,9 +106,9 @@ public:
 
 } // namespace internal
 
-template <typename Geom_traits>
+template <typename GeomTraits>
 using Arr_approximate_point_2 =
-    internal::Arr_approximate_point_2_impl<Geom_traits, has_approximate_2<Geom_traits>::value>;
+    internal::Arr_approximate_point_2_impl<GeomTraits, has_approximate_2<GeomTraits>::value>;
 
 } // namespace draw_aos
 } // namespace CGAL

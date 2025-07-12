@@ -17,8 +17,8 @@
 #define ARR_VIEWER_H
 
 #include <array>
-#include <cmath>
 #include <cstddef>
+#include <limits>
 
 #include <boost/iterator/function_output_iterator.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -30,29 +30,51 @@
 #include <QtGui/QMouseEvent>
 #include <QtGui/QKeyEvent>
 
+#include <CGAL/Qt/camera.h>
+#include <CGAL/Arr_linear_traits_2.h>
+#include <CGAL/Arr_segment_traits_2.h>
 #include <CGAL/Basic_viewer.h>
-#include "CGAL/Bbox_2.h"
-#include <CGAL/Draw_aos/helpers.h>
-#include "CGAL/Draw_aos/Arr_approximate_point_2.h"
-#include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
-#include "CGAL/Draw_aos/Arr_bounded_renderer.h"
-#include "CGAL/Draw_aos/Arr_render_context.h"
-#include "CGAL/Graphics_scene.h"
-#include "CGAL/Graphics_scene_options.h"
-#include "CGAL/Qt/camera.h"
+#include <CGAL/Bbox_2.h>
+#include <CGAL/Graphics_scene.h>
+#include <CGAL/Graphics_scene_options.h>
+#include <CGAL/Draw_aos/Arr_bounded_renderer.h>
+#include <CGAL/Draw_aos/Arr_render_context.h>
 
 namespace CGAL {
 namespace draw_aos {
+
+template <typename GeomTraits>
+class Get_approx_error
+{
+public:
+  double operator()(std::size_t viewport_width, double bbox_width) const {
+#ifdef CGAL_DRAW_AOS_DEBUG
+    constexpr double Max_sampling_points = 500.0;
+#else
+    constexpr double Max_sampling_points = 1000.0;
+#endif
+    return bbox_width / std::min(static_cast<double>(viewport_width), Max_sampling_points);
+  }
+};
+
+template <typename Kernel>
+class Get_approx_error<Arr_linear_traits_2<Kernel>>
+{
+public:
+  double operator()(std::size_t, double) const { return std::numeric_limits<double>::max(); }
+};
+
+template <typename Arrangement, typename GSOptions>
 class Arr_viewer : public Qt::Basic_viewer
 {
   using Basic_viewer = Qt::Basic_viewer;
-  using Vertex_const_handle = Arrangement::Vertex_const_handle;
-  using Halfedge_const_handle = Arrangement::Halfedge_const_handle;
-  using Face_const_handle = Arrangement::Face_const_handle;
-  using Feature_portal_map = Arr_portals::Feature_portals_map;
-  using Graphics_scene_options =
-      Graphics_scene_options<Arrangement, Vertex_const_handle, Halfedge_const_handle, Face_const_handle>;
+  using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
+  using Halfedge_const_handle = typename Arrangement::Halfedge_const_handle;
+  using Face_const_handle = typename Arrangement::Face_const_handle;
+  using Feature_portal_map = typename Arr_portals<Arrangement>::Feature_portals_map;
+  using Graphics_scene_options = GSOptions;
   using Point_location = Arr_trapezoid_ric_point_location<Arrangement>;
+  using Geom_traits = typename Arrangement::Geometry_traits_2;
 
 private:
   // Function to check if the camera's state has changed
@@ -110,10 +132,9 @@ private:
   double get_approx_error(const Bbox_2& bbox) const {
     std::array<GLint, 4> viewport;
     camera_->getViewport(viewport.data());
-    double width = static_cast<double>(viewport[2]);
-    // return bbox.x_span() / std::min(600.0, width);
-    // We are testing linear traits, lets set it to inf
-    return 0.5;
+    double viewport_width = static_cast<double>(viewport[2]);
+    double bbox_xspan = bbox.x_span();
+    return Get_approx_error<Geom_traits>()(viewport_width, bbox_xspan);
   }
 
 public:
@@ -124,13 +145,19 @@ public:
       : Basic_viewer(parent, m_scene, title)
       , m_scene_options(options)
       , m_arr(arr)
-      , m_feature_portals(Arr_portals().create(arr))
+      , m_feature_portals(Arr_portals<Arrangement>(*arr.geometry_traits()).create(arr))
       , m_pl(arr) {}
 
   void render_arr(const Bbox_2& bbox) {
-    Arr_render_context ctx(m_arr, m_pl, m_feature_portals, get_approx_error(bbox));
-    Arr_bounded_renderer renderer(ctx, bbox);
+    Arr_render_context<Arrangement> ctx(m_arr, m_pl, m_feature_portals, get_approx_error(bbox));
+    Arr_bounded_renderer<Arrangement> renderer(ctx, bbox);
     const auto& cache = renderer.render();
+
+#if defined(CGAL_DRAW_AOS_DEBUG)
+    std::cout << "Rendering arrangement with " << cache.face_cache_size() << " visible faces, "
+              << cache.halfedge_cache_size() << " visible halfedges, " << cache.vertex_cache_size()
+              << " visible vertices." << std::endl;
+#endif
 
     // add faces
     for(const auto& [fh, face_tris] : cache.face_cache()) {
@@ -184,11 +211,11 @@ public:
       }
     }
 
-    // If there's nothing to render, we draw fill the bbox with background color.
+    // If there's nothing to render, we fill the bbox with background color.
     // This is to keep the Basic_viewer working in 2D mode.
     if(m_scene.empty()) {
-      m_scene.face_begin(CGAL::IO::Color(255, 255, 255));
-      using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+      m_scene.face_begin(CGAL::IO::Color(255, 255, 255)); // White, by now
+      using Approx_point = typename Arr_approximation_geometry_traits<Geom_traits>::Approx_point;
       m_scene.add_point_in_face(Approx_point(bbox.xmin(), bbox.ymin()));
       m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymin()));
       m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymax()));
@@ -199,20 +226,19 @@ public:
 
   void rerender(Bbox_2 bbox) {
     m_scene.clear();
-    Bbox_2 rounded_bbox(std::floor(bbox.xmin()), std::floor(bbox.ymin()), std::ceil(bbox.xmax()),
-                        std::ceil(bbox.ymax()));
-    render_arr(rounded_bbox);
+    render_arr(bbox);
     Basic_viewer::redraw();
   }
 
   virtual void draw() override {
     if(is_camera_changed()) {
       Bbox_2 bbox = view_bbox_from_camera();
-      // shrink the bbox by 10% for testing
+#if defined(CGAL_DRAW_AOS_DEBUG)
       double dx = (bbox.xmax() - bbox.xmin()) * 0.1;
       double dy = (bbox.ymax() - bbox.ymin()) * 0.1;
       bbox = Bbox_2(bbox.xmin() + dx, bbox.ymin() + dy, bbox.xmax() - dx, bbox.ymax() - dy);
       std::cout << "Camera changed, recomputing arrangement bounding box: " << bbox << std::endl;
+#endif
       rerender(bbox);
     }
     Basic_viewer::draw();
@@ -231,33 +257,6 @@ private:
 };
 
 } // namespace draw_aos
-
-void draw_viewer(const draw_aos::Arrangement& arr) {
-  using Arrangement = draw_aos::Arrangement;
-
-  Qt::init_ogl_context(4, 3);
-  int argc;
-  QApplication app(argc, nullptr);
-  Graphics_scene_options<Arrangement, Arrangement::Vertex_const_handle, Arrangement::Halfedge_const_handle,
-                         Arrangement::Face_const_handle>
-      gso;
-  gso.enable_faces();
-  gso.enable_edges();
-  gso.enable_vertices();
-  gso.face_color = [](const Arrangement&, const Arrangement::Face_const_handle& fh) -> CGAL::IO::Color {
-    CGAL::Random random((size_t(fh.ptr())));
-    return get_random_color(random);
-  };
-  gso.colored_face = [](const Arrangement&, const Arrangement::Face_const_handle&) { return true; };
-  gso.vertex_color = [](const Arrangement&, const Arrangement::Vertex_const_handle& vh) -> CGAL::IO::Color {
-    CGAL::Random random((size_t(vh.ptr())));
-    return get_random_color(random);
-  };
-  draw_aos::Arr_viewer viewer(app.activeWindow(), arr, gso, "Arrangement Viewer");
-  viewer.show();
-  app.exec();
-}
-
 } // namespace CGAL
 
 #endif

@@ -1,22 +1,33 @@
 #ifndef CGAL_DRAW_AOS_ARR_FACE_TRIANGULATOR_H
 #define CGAL_DRAW_AOS_ARR_FACE_TRIANGULATOR_H
 
-#include "CGAL/Constrained_triangulation_2.h"
-#include "CGAL/Constrained_triangulation_face_base_2.h"
-#include "CGAL/Draw_aos/Arr_approximation_geometry_traits.h"
-#include "CGAL/Draw_aos/Arr_render_context.h"
-#include "CGAL/Exact_predicates_inexact_constructions_kernel.h"
-#include "CGAL/Triangulation_vertex_base_with_info_2.h"
-#include "CGAL/mark_domain_in_triangulation.h"
-#include "CGAL/unordered_flat_map.h"
 #include <algorithm>
 #include <cstddef>
-#include <CGAL/Draw_aos/helpers.h>
-#include <boost/iterator/function_output_iterator.hpp>
-#include <boost/iterator/transform_iterator.hpp>
 #include <functional>
 #include <utility>
 #include <vector>
+
+#include <boost/iterator/function_output_iterator.hpp>
+#include <boost/iterator/transform_iterator.hpp>
+
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+#include <CGAL/mark_domain_in_triangulation.h>
+#include <CGAL/unordered_flat_map.h>
+#include <CGAL/Constrained_triangulation_2.h>
+#include <CGAL/Constrained_triangulation_face_base_2.h>
+#include <CGAL/Draw_aos/Arr_render_context.h>
+
+#if defined(CGAL_DRAW_AOS_DEBUG) && defined(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR)
+#include <fstream>
+#include <filesystem>
+
+template <typename Arrangement>
+class Arr_bounded_face_triangulator;
+
+template <typename Arrangement>
+void debug_print(const Arr_bounded_face_triangulator<Arrangement>& triangulator);
+#endif
 
 namespace CGAL {
 namespace draw_aos {
@@ -26,14 +37,20 @@ namespace draw_aos {
  *
  * @note The face must have an outer CCB.
  */
+template <typename Arrangement>
 class Arr_bounded_face_triangulator
 {
-  using Approx_geom_traits = Arr_approximation_geometry_traits;
-  using Approx_kernel = Approx_geom_traits::Approximation_kernel;
-  using Approx_point = Approx_geom_traits::Approx_point;
-  using Point_vec = Approx_geom_traits::Apporx_point_vec;
-  using Triangle = Approx_geom_traits::Triangle;
-  using Triangulated_face = Approx_geom_traits::Triangulated_face;
+  using Geom_traits = typename Arrangement::Geometry_traits_2;
+  using Approx_traits = Arr_approximation_geometry_traits<Geom_traits>;
+  using Approx_point = typename Approx_traits::Approx_point;
+  using Point_vec = typename Approx_traits::Apporx_point_vec;
+  using Triangle = typename Approx_traits::Triangle;
+  using Triangulated_face = typename Approx_traits::Triangulated_face;
+#if defined(CGAL_DRAW_AOS_DEBUG)
+  template <typename T>
+  friend void debug_print(const Arr_bounded_face_triangulator<T>& triangulator);
+#endif
+
   struct Point_index
   {
     constexpr static std::size_t Invalid_index = std::numeric_limits<std::size_t>::max();
@@ -44,21 +61,15 @@ class Arr_bounded_face_triangulator
     bool is_valid() const { return index != Invalid_index; }
     operator std::size_t() const { return index; }
   };
-  using Epick = CGAL::Exact_predicates_inexact_constructions_kernel;
-  using Vb = CGAL::Triangulation_vertex_base_with_info_2<Point_index, Epick>;
-  using Fb = CGAL::Constrained_triangulation_face_base_2<Epick>;
-  using Tds = CGAL::Triangulation_data_structure_2<Vb, Fb>;
+  using Epick = Exact_predicates_inexact_constructions_kernel;
+  using Vb = Triangulation_vertex_base_with_info_2<Point_index, Epick>;
+  using Fb = Constrained_triangulation_face_base_2<Epick>;
+  using Tds = Triangulation_data_structure_2<Vb, Fb>;
   using Ct = Constrained_triangulation_2<Epick, Tds, Exact_predicates_tag>;
   using KPoint = Epick::Point_2;
   using KPoint_with_info = std::pair<KPoint, Point_index>;
 
-  enum class Side_of_boundary {
-    Left,
-    Right,
-    Bottom,
-    Top,
-    None,
-  };
+  using Bounded_render_context = Arr_bounded_render_context<Arrangement>;
 
 public:
   using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point)>>;
@@ -110,7 +121,7 @@ private:
     auto transformed_begin = boost::make_transform_iterator(filtered_begin, index_to_point_with_info);
     auto transformed_end = boost::make_transform_iterator(filtered_end, index_to_point_with_info);
 
-    m_ct.insert_with_info<KPoint_with_info>(transformed_begin, transformed_end);
+    m_ct.template insert_with_info<KPoint_with_info>(transformed_begin, transformed_end);
   }
 
   Side_of_boundary shared_boundary_side(const Approx_point& pt1, const Approx_point& pt2) const {
@@ -147,17 +158,8 @@ private:
   }
 
 public:
-  Arr_bounded_face_triangulator(const Arr_bounded_render_context& ctx)
-      : m_ctx(ctx) {
-
-    // TODO : remove
-    std::ofstream ofs_index("/Users/shep/codes/aos_2_js_helper/shapes.txt", std::ios::app);
-    auto name = "outer_ccb_" + std::to_string((*m_ctx.counter)++) + ".txt";
-    ofs_index << name << std::endl;
-    m_ofs = std::ofstream("/Users/shep/codes/aos_2_js_helper/" + name, std::ios::out | std::ios::trunc);
-  }
-  Arr_bounded_face_triangulator(const Arr_bounded_face_triangulator& other) = delete;
-  Arr_bounded_face_triangulator& operator=(const Arr_bounded_face_triangulator& other) = delete;
+  Arr_bounded_face_triangulator(const Bounded_render_context& ctx)
+      : m_ctx(ctx) {}
 
   Insert_iterator insert_iterator() {
     return boost::make_function_output_iterator(std::function([this](Approx_point pt) {
@@ -166,38 +168,30 @@ public:
       if(m_points.size() != 0) {
         add_boundary_helper_point(m_points.back(), pt);
       }
-      // TODO : remove
-      m_ofs << pt.x() << " " << pt.y() << std::endl;
       m_points.emplace_back(pt);
     }));
   }
 
   operator Triangulated_face() && {
-    if(m_points.size() != 0) {
-      add_boundary_helper_point(m_points.back(), m_points.front());
-    }
-
-    insert_ccb();
-
-    if(m_points.empty() || m_ct.number_of_faces() == 0) {
+    if(m_points.empty()) {
       return Triangulated_face();
     }
 
-    {
-      // TODO : remove
-      std::ofstream ofs_index("/Users/shep/codes/aos_2_js_helper/shapes.txt", std::ios::app);
-      auto& ctx = const_cast<Arr_bounded_render_context&>(m_ctx);
-      auto name = "ccb_constraint" + std::to_string((*ctx.counter)++) + ".txt";
-      ofs_index << name << std::endl;
-      std::ofstream ofs("/Users/shep/codes/aos_2_js_helper/" + name, std::ios::out | std::ios::trunc);
-      std::copy(m_points.begin(), m_points.end(), std::ostream_iterator<Approx_point>(ofs, "\n"));
-    }
-
+    add_boundary_helper_point(m_points.back(), m_points.front());
+    insert_ccb();
     // insert_constraint() should be called after insert_with_info(), or info will not be set correctly.
     m_ct.insert_constraint(boost::make_transform_iterator(m_points.begin(), transform_point),
                            boost::make_transform_iterator(m_points.end(), transform_point), true);
 
-    unordered_flat_map<Ct::Face_handle, bool> in_domain_map;
+#if defined(CGAL_DRAW_AOS_DEBUG)
+    debug_print(*this);
+#endif
+
+    if(m_ct.number_of_faces() == 0) {
+      return Triangulated_face();
+    }
+
+    unordered_flat_map<typename Ct::Face_handle, bool> in_domain_map;
     boost::associative_property_map<decltype(in_domain_map)> in_domain(in_domain_map);
     CGAL::mark_domain_in_triangulation(m_ct, in_domain);
 
@@ -222,13 +216,50 @@ public:
   }
 
 private:
-  const Arr_bounded_render_context& m_ctx;
-  std::ofstream m_ofs;
+  const Bounded_render_context& m_ctx;
   Ct m_ct;
   std::vector<Approx_point> m_points;
   double m_offset = 0.5;                     // Doesn't matter how much we offset.
   std::vector<std::size_t> m_helper_indices; // The offseted point indices when inserting outer ccb constraint
 };
+
+#if defined(CGAL_DRAW_AOS_DEBUG) && defined(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR)
+template <typename Arrangement>
+void debug_print(const Arr_bounded_face_triangulator<Arrangement>& triangulator) {
+  const auto& ctx = triangulator.m_ctx;
+  const auto& m_points = triangulator.m_points;
+  const auto& m_helper_indices = triangulator.m_helper_indices;
+
+  using Path = std::filesystem::path;
+  Path debug_dir(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR);
+  std::string index_file_name = "index.txt";
+  Path index_file_path = debug_dir / index_file_name;
+  std::string ccb_file_name = "ccb_" + std::to_string(*ctx.debug_counter) + ".txt";
+  std::string ccb_constraint_file_name = "ccb_constraint_" + std::to_string(*ctx.debug_counter) + ".txt";
+  Path ccb_file_path = debug_dir / ccb_file_name;
+  Path ccb_constraint_file_path = debug_dir / ccb_constraint_file_name;
+  const_cast<int&>(*ctx.debug_counter)++;
+
+  std::ofstream ofs_index(index_file_path, std::ios::app);
+  ofs_index << ccb_file_name << "\n" << ccb_constraint_file_name << std::endl;
+
+  std::ofstream ofs_ccb(ccb_file_path);
+  std::size_t helper_indices_index = 0;
+  for(std::size_t i = 0; i < m_points.size(); ++i) {
+    const auto& pt = m_points[i];
+    if(helper_indices_index < m_helper_indices.size() && i == m_helper_indices[helper_indices_index]) {
+      helper_indices_index++;
+      continue;
+    }
+    ofs_ccb << pt.x() << " " << pt.y() << "\n";
+  }
+
+  std::ofstream ofs_ccb_constraint(ccb_constraint_file_path);
+  for(const auto& pt : m_points) {
+    ofs_ccb_constraint << pt.x() << " " << pt.y() << "\n";
+  }
+}
+#endif // CGAL_DRAW_AOS_DEBUG && CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR
 
 } // namespace draw_aos
 } // namespace CGAL

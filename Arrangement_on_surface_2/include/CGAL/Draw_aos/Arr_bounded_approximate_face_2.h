@@ -1,6 +1,15 @@
 #ifndef CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_2_H
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_2_H
 
+#include <cstddef>
+#include <functional>
+#include <optional>
+#include <type_traits>
+#include <variant>
+#include <algorithm>
+
+#include <boost/iterator/function_output_iterator.hpp>
+
 #include "CGAL/Arr_enums.h"
 #include "CGAL/Bbox_2.h"
 #include "CGAL/Draw_aos/Arr_bounded_approximate_curve_2.h"
@@ -8,16 +17,6 @@
 #include "CGAL/Draw_aos/Arr_bounded_face_triangulator.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/type_utils.h"
-#include "CGAL/basic.h"
-#include <CGAL/Draw_aos/Arr_approximation_geometry_traits.h>
-#include <CGAL/Draw_aos/helpers.h>
-#include <algorithm>
-#include <boost/iterator/function_output_iterator.hpp>
-#include <cstddef>
-#include <functional>
-#include <optional>
-#include <type_traits>
-#include <variant>
 
 namespace CGAL {
 
@@ -26,18 +25,10 @@ namespace draw_aos {
  * @brief Patches corners between two boundary points of the bbox
  * counter-clockwisely.
  */
+template <typename GeomTraits>
 class Patch_boundary
 {
-  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
-
-  // We have different definition compared to the one in Arr_bounds_context_mixin
-  enum class Side_of_boundary {
-    Top = 0,
-    Left = 1,
-    Bottom = 2,
-    Right = 3,
-    None = -1,
-  };
+  using Approx_point = typename Arr_approximation_geometry_traits<GeomTraits>::Approx_point;
 
 private:
   Side_of_boundary side_of_boundary(Approx_point pt) const {
@@ -139,10 +130,11 @@ private:
   const Bbox_2 m_bbox;
 };
 
-template <typename OutputIterator>
+template <typename GeomTraits, typename OutputIterator>
 class Colinear_simplifier
 {
-  using Approx_point = Arr_approximation_geometry_traits::Approx_point;
+  using Geom_traits = GeomTraits;
+  using Approx_point = typename Arr_approximation_geometry_traits<Geom_traits>::Approx_point;
 
 public:
   using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point)>>;
@@ -197,42 +189,58 @@ private:
  * @brief Bounded face approximation for arrangements.
  * @note Member functions are not thread-safe.
  */
+template <typename Arrangement>
 class Arr_bounded_approximate_face_2
 {
-  using Approx_geom_traits = Arr_approximation_geometry_traits;
-  using Face_const_handle = Arrangement::Face_const_handle;
-  using Halfedge_const_handle = Arrangement::Halfedge_const_handle;
-  using Vertex_const_handle = Arrangement::Vertex_const_handle;
-  using Polyline_geom = Approx_geom_traits::Polyline_geom;
-  using Ccb_halfedge_const_circulator = Arrangement::Ccb_halfedge_const_circulator;
-  using Approx_point = Approx_geom_traits::Approx_point;
-  using Triangulated_face = Approx_geom_traits::Triangulated_face;
-  using Feature_portal_map = Arr_portals::Feature_portals_map;
-  using Portal_vector = Arr_portals::Portal_vector;
-  using Portal = Arr_portals::Portal;
+  using Geom_traits = typename Arrangement::Geometry_traits_2;
+  using Approx_traits = Arr_approximation_geometry_traits<Geom_traits>;
+  using Face_const_handle = typename Arrangement::Face_const_handle;
+  using Halfedge_const_handle = typename Arrangement::Halfedge_const_handle;
+  using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
+  using Polyline_geom = typename Approx_traits::Polyline_geom;
+  using Ccb_halfedge_const_circulator = typename Arrangement::Ccb_halfedge_const_circulator;
+  using Approx_point = typename Approx_traits::Approx_point;
+  using Triangulated_face = typename Approx_traits::Triangulated_face;
+  using Feature_portal_map = typename Arr_portals<Arrangement>::Feature_portals_map;
+  using Portal_vector = typename Arr_portals<Arrangement>::Portal_vector;
+  using Portal = typename Arr_portals<Arrangement>::Portal;
   using Point_or_portal = std::variant<Approx_point, Portal>;
-  using FT = Type_traits<Geom_traits>::FT;
+  using FT = typename Traits_adaptor<Geom_traits>::FT;
+
+  using Bounded_approximate_point_2 = Arr_bounded_approximate_point_2<Arrangement>;
+  using Bounded_approximate_curve_2 = Arr_bounded_approximate_curve_2<Arrangement>;
+  using Bounded_render_context = Arr_bounded_render_context<Arrangement>;
+
+  using Triangulator = Arr_bounded_face_triangulator<Arrangement>;
+  using Patch_boundary = Patch_boundary<Geom_traits>;
+  using Simplifier = Colinear_simplifier<Geom_traits, typename Triangulator::Insert_iterator>;
 
   struct Left_to_right_tag
   {};
   struct Right_to_left_tag
   {};
 
+  struct Inner_ccb_tag
+  {};
+  struct Outer_ccb_tag
+  {};
+
 private:
-  class Execution_context : public Arr_context_delegator<Arr_bounded_render_context>
+  class Execution_context : public Arr_context_delegator<Bounded_render_context>
   {
   private:
-    using Output_iterator = Colinear_simplifier<Arr_bounded_face_triangulator::Insert_iterator>::Insert_iterator;
+    using Output_iterator =
+        typename Colinear_simplifier<Geom_traits, typename Triangulator::Insert_iterator>::Insert_iterator;
 
   public:
     using Insert_iterator = boost::function_output_iterator<std::function<void(Approx_point pt)>>;
 
-    Execution_context(const Arr_bounded_render_context& ctx,
+    Execution_context(const Bounded_render_context& ctx,
                       const Patch_boundary& patch_boundary,
                       Output_iterator out_it,
-                      const Arr_bounded_approximate_point_2& bounded_approx_pt,
-                      const Arr_bounded_approximate_curve_2& bounded_approx_curve)
-        : Arr_context_delegator(ctx)
+                      const Bounded_approximate_point_2& bounded_approx_pt,
+                      const Bounded_approximate_curve_2& bounded_approx_curve)
+        : Arr_context_delegator<Bounded_render_context>(ctx)
         , base_out_it(out_it)
         , patch_boundary(patch_boundary)
         , bounded_approx_pt(bounded_approx_pt)
@@ -266,8 +274,8 @@ private:
     Execution_context& operator=(const Execution_context&) = delete;
 
   public:
-    const Arr_bounded_approximate_point_2& bounded_approx_pt;
-    const Arr_bounded_approximate_curve_2& bounded_approx_curve;
+    const Bounded_approximate_point_2& bounded_approx_pt;
+    const Bounded_approximate_curve_2& bounded_approx_curve;
     Insert_iterator out_it;
     std::optional<Approx_point> last_pt, first_pt;
     bool passed_fictitious_edge{false};
@@ -419,13 +427,13 @@ private:
   }
 
 public:
-  Arr_bounded_approximate_face_2(const Arr_bounded_render_context& ctx,
-                                 const Arr_bounded_approximate_point_2& point_approx,
-                                 const Arr_bounded_approximate_curve_2& curve_approx)
+  Arr_bounded_approximate_face_2(const Bounded_render_context& ctx,
+                                 const Bounded_approximate_point_2& bounded_approx_pt,
+                                 const Bounded_approximate_curve_2& bounded_approx_curve)
       : m_ctx(ctx)
       , m_patch_boundary(ctx.bbox())
-      , m_point_approx(point_approx)
-      , m_curve_approx(curve_approx) {}
+      , m_bounded_approx_pt(bounded_approx_pt)
+      , m_bounded_approx_curve(bounded_approx_curve) {}
 
   const Triangulated_face& operator()(const Face_const_handle& fh) const {
     auto [triangulated_face, inserted] = m_ctx.cache.try_emplace(fh);
@@ -448,19 +456,20 @@ public:
             // Found non degenerate edge, skip.
             continue;
           }
-          m_curve_approx(circ);
+          m_bounded_approx_curve(circ);
         } while(++circ != *inner_ccb);
       }
       for(auto vh = fh->isolated_vertices_begin(); vh != fh->isolated_vertices_end(); ++vh) {
-        m_point_approx(vh);
+        m_bounded_approx_pt(vh);
       }
 
       return triangulated_face;
     }
 
-    auto triangulator = Arr_bounded_face_triangulator(m_ctx);
-    auto simplifier = Colinear_simplifier(triangulator.insert_iterator(), m_ctx.bbox());
-    auto ctx = Execution_context(m_ctx, m_patch_boundary, simplifier.insert_iterator(), m_point_approx, m_curve_approx);
+    auto triangulator = Triangulator(m_ctx);
+    auto simplifier = Simplifier(triangulator.insert_iterator(), m_ctx.bbox());
+    auto ctx = Execution_context(m_ctx, m_patch_boundary, simplifier.insert_iterator(), m_bounded_approx_pt,
+                                 m_bounded_approx_curve);
 
     if(fh->is_unbounded()) {
       approximate_ccb<Outer_ccb_tag, true>(ctx, fh->outer_ccb());
@@ -474,11 +483,12 @@ public:
   }
 
 private:
-  const Arr_bounded_render_context& m_ctx;
-  const Arr_bounded_approximate_point_2& m_point_approx;
-  const Arr_bounded_approximate_curve_2& m_curve_approx;
+  const Bounded_render_context& m_ctx;
+  const Bounded_approximate_point_2& m_bounded_approx_pt;
+  const Bounded_approximate_curve_2& m_bounded_approx_curve;
   const Patch_boundary m_patch_boundary;
 };
+
 } // namespace draw_aos
 } // namespace CGAL
 #endif // CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_2_H
