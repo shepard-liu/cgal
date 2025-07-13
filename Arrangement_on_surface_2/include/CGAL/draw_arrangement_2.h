@@ -27,9 +27,10 @@
 #include <CGAL/Graphics_scene.h>
 #include <CGAL/Graphics_scene_options.h>
 #include <CGAL/Random.h>
-#include <CGAL/license/Arrangement_on_surface_2.h>
 #include <CGAL/config.h>
 #include <CGAL/Draw_aos/Arr_viewer.h>
+
+#include <CGAL/license/Arrangement_on_surface_2.h>
 
 namespace CGAL {
 

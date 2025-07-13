@@ -17,6 +17,7 @@
 #define ARR_VIEWER_H
 
 #include "CGAL/Draw_aos/type_utils.h"
+#include "CGAL/IO/Color.h"
 #include <array>
 #include <cstddef>
 #include <limits>
@@ -131,6 +132,17 @@ public:
       , m_feature_portals(Arr_portals<Arrangement>(*arr.geometry_traits()).create(arr))
       , m_pl(arr) {}
 
+  void draw_colored_rect(const Bbox_2& bbox, const CGAL::IO::Color& color) {
+    using Approx_point = typename Arr_approximation_geometry_traits<Geom_traits>::Approx_point;
+
+    m_scene.face_begin(color);
+    m_scene.add_point_in_face(Approx_point(bbox.xmin(), bbox.ymin()));
+    m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymin()));
+    m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymax()));
+    m_scene.add_point_in_face(Approx_point(bbox.xmin(), bbox.ymax()));
+    m_scene.face_end();
+  }
+
   void render_arr(const Bbox_2& bbox) {
     Arr_render_context<Arrangement> ctx(m_arr, m_pl, m_feature_portals, get_approx_error(bbox));
     Arr_bounded_renderer<Arrangement> renderer(ctx, bbox);
@@ -143,9 +155,14 @@ public:
 #endif
 
     // add faces
+    std::size_t non_degenerate_face_count = 0;
     for(const auto& [fh, face_tris] : cache.face_cache()) {
       const auto& points = face_tris.points;
       const auto& tris = face_tris.triangles;
+      if(tris.empty()) {
+        continue;
+      }
+      non_degenerate_face_count++;
       bool draw_face = m_scene_options.colored_face(m_arr, fh);
       for(const auto& t : tris) {
         if(draw_face) {
@@ -194,16 +211,14 @@ public:
       }
     }
 
+    if(non_degenerate_face_count == 1 && cache.face_cache_begin()->first->is_unbounded()) {
+      draw_colored_rect(bbox, m_scene_options.face_color(m_arr, cache.face_cache_begin()->first));
+      return;
+    }
     // If there's nothing to render, we fill the bbox with background color.
     // This is to keep the Basic_viewer working in 2D mode.
     if(m_scene.empty()) {
-      m_scene.face_begin(CGAL::IO::Color(255, 255, 255)); // White, by now
-      using Approx_point = typename Arr_approximation_geometry_traits<Geom_traits>::Approx_point;
-      m_scene.add_point_in_face(Approx_point(bbox.xmin(), bbox.ymin()));
-      m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymin()));
-      m_scene.add_point_in_face(Approx_point(bbox.xmax(), bbox.ymax()));
-      m_scene.add_point_in_face(Approx_point(bbox.xmin(), bbox.ymax()));
-      m_scene.face_end();
+      draw_colored_rect(bbox, IO::Color(255, 255, 255));
     }
   }
 

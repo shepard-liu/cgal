@@ -227,7 +227,7 @@ private:
 
 public:
   constexpr static bool Has_unbounded_curves = true;
-  constexpr static double Approximation_sizing_factor = 5.0;
+  constexpr static double Approximation_sizing_factor = 30.0;
   using FT = typename Geom_traits::Algebraic_real_1;
   using Approximate_2 = typename Geom_traits::Approximate_2;
   // Currently, Approximate_number_type is defined as Bound in Arr_rational_function_traits_2,

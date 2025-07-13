@@ -18,8 +18,6 @@ namespace draw_aos {
 
 /**
  * @brief Render arrangement on surface within a bounding box.
- *
- * @note The class is not thread-safe.
  */
 template <typename Arrangement>
 class Arr_bounded_renderer
