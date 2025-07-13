@@ -1,7 +1,6 @@
 #ifndef CGAL_DRAW_AOS_ARR_APPROXIMATE_POINT_2_H
 #define CGAL_DRAW_AOS_ARR_APPROXIMATE_POINT_2_H
 
-#include "CGAL/Arr_has.h"
 #include "CGAL/Arr_rational_function_traits_2.h"
 #include "CGAL/number_utils.h"
 #include "CGAL/Draw_aos/type_utils.h"
@@ -108,7 +107,9 @@ public:
 
 template <typename GeomTraits>
 using Arr_approximate_point_2 =
-    internal::Arr_approximate_point_2_impl<GeomTraits, has_approximate_2<GeomTraits>::value>;
+    internal::Arr_approximate_point_2_impl<GeomTraits,
+                                           has_approximate_2_object_v<GeomTraits> &&
+                                               has_operator_point_v<GeomTraits, typename GeomTraits::Approximate_2>>;
 
 } // namespace draw_aos
 } // namespace CGAL

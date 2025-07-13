@@ -1,7 +1,9 @@
+#include "CGAL/Random.h"
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Arrangement_2.h>
 #include <CGAL/Arr_segment_traits_2.h>
 #include <CGAL/draw_arrangement_2.h>
+#include <iterator>
 
 using Kernel = CGAL::Exact_predicates_exact_constructions_kernel;
 using Traits = CGAL::Arr_segment_traits_2<Kernel>;
@@ -90,15 +92,14 @@ int main() {
 
   std::cout << arr.number_of_vertices() << ", " << arr.number_of_edges() << ", " << arr.number_of_faces() << std::endl;
 
-  std::size_t id(0);
-
   CGAL::Graphics_scene_options<Arrangement_2, typename Arrangement_2::Vertex_const_handle,
                                typename Arrangement_2::Halfedge_const_handle, typename Arrangement_2::Face_const_handle>
       gso;
   gso.colored_face = [](const Arrangement_2&, Arrangement_2::Face_const_handle) -> bool { return true; };
 
-  gso.face_color = [&id](const Arrangement_2& arr, Arrangement_2::Face_const_handle) -> CGAL::IO::Color {
-    float h = 360.0f * id++ / arr.number_of_faces();
+  gso.face_color = [](const Arrangement_2& arr, Arrangement_2::Face_const_handle fh) -> CGAL::IO::Color {
+    CGAL::Random random((size_t(fh.ptr())));
+    float h = 360.0f * random.get_double(0, 1);
     float s = 0.5;
     float v = 0.5;
     auto [r, g, b] = hsv_to_rgb(h, s, v);

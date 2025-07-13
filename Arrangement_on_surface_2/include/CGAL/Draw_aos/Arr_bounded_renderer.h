@@ -127,7 +127,7 @@ private:
 
         // There's a rare case that some faces' outer ccb overlaps with the bounding box edges, causing
         // no face to be discovered. We need to approximate the inbound face incident to the halfedge
-        ctx.bounded_approx_face(inbound_face_of_edge(*he, side));
+        discover_faces(ctx, inbound_face_of_edge(*he, side));
       } else if(auto* fh = std::get_if<Face_handle>(&feature)) {
         if(!feats.is_set(Feature_type::Face)) {
           return;

@@ -16,6 +16,7 @@
 #ifndef ARR_VIEWER_H
 #define ARR_VIEWER_H
 
+#include "CGAL/Draw_aos/type_utils.h"
 #include <array>
 #include <cstddef>
 #include <limits>
@@ -42,27 +43,6 @@
 
 namespace CGAL {
 namespace draw_aos {
-
-template <typename GeomTraits>
-class Get_approx_error
-{
-public:
-  double operator()(std::size_t viewport_width, double bbox_width) const {
-#ifdef CGAL_DRAW_AOS_DEBUG
-    constexpr double Max_sampling_points = 500.0;
-#else
-    constexpr double Max_sampling_points = 1000.0;
-#endif
-    return bbox_width / std::min(static_cast<double>(viewport_width), Max_sampling_points);
-  }
-};
-
-template <typename Kernel>
-class Get_approx_error<Arr_linear_traits_2<Kernel>>
-{
-public:
-  double operator()(std::size_t, double) const { return std::numeric_limits<double>::max(); }
-};
 
 template <typename Arrangement, typename GSOptions>
 class Arr_viewer : public Qt::Basic_viewer
@@ -130,11 +110,14 @@ private:
   }
 
   double get_approx_error(const Bbox_2& bbox) const {
+    if constexpr(Traits_adaptor<Geom_traits>::Approximation_sizing_factor == 0.0) {
+      return std::numeric_limits<double>::max();
+    }
     std::array<GLint, 4> viewport;
     camera_->getViewport(viewport.data());
     double viewport_width = static_cast<double>(viewport[2]);
     double bbox_xspan = bbox.x_span();
-    return Get_approx_error<Geom_traits>()(viewport_width, bbox_xspan);
+    return bbox_xspan / viewport_width * Traits_adaptor<Geom_traits>::Approximation_sizing_factor;
   }
 
 public:

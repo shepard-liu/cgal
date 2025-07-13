@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <optional>
 #include <vector>
@@ -11,6 +12,7 @@
 #include "CGAL/Draw_aos/Arr_approximate_point_2_at_x.h"
 #include "CGAL/Draw_aos/Arr_render_context.h"
 #include "CGAL/Draw_aos/type_utils.h"
+#include "CGAL/basic.h"
 
 namespace CGAL {
 namespace draw_aos {
@@ -305,20 +307,28 @@ private:
         , right(Approx_line_2(Approx_point(ctx.xmax(), ctx.ymin()), Approx_point(ctx.xmax(), ctx.ymax())))
         , bottom(Approx_line_2(Approx_point(ctx.xmin(), ctx.ymin()), Approx_point(ctx.xmax(), ctx.ymin())))
         , left(Approx_line_2(Approx_point(ctx.xmin(), ctx.ymin()), Approx_point(ctx.xmin(), ctx.ymax())))
-        , out_it(std::back_inserter(polyline)) {}
+        , m_base_out_it(std::back_inserter(polyline))
+        , out_it(boost::make_function_output_iterator(std::function([this](Approx_point pt) {
+          if(!(*this)->contains_x(pt.x())) {
+            return;
+          }
+          *this->m_base_out_it++ = pt;
+        }))) {}
 
+  private:
+    std::back_insert_iterator<Polyline_geom> m_base_out_it;
+
+  public:
     const X_monotone_curve_2& curve;
     const Approximate_2& approx_2;
     const Approx_line_2 top, right, bottom, left;
-    std::back_insert_iterator<Polyline_geom> out_it;
+    boost::function_output_iterator<std::function<void(Approx_point)>> out_it;
   };
 
   static void update_on_crossing_boundary(Execution_context& ctx,
                                           Approx_point& last_pt,
                                           const Approx_point& pt,
                                           Side_of_boundary side) {
-    Approx_line_2 l(last_pt, pt);
-
     const auto& boundary_line = [&ctx, side]() {
       switch(side) {
       case Side_of_boundary::Top:
@@ -335,26 +345,13 @@ private:
       CGAL_assertion(false && "Unexpected side of boundary");
     }();
 
-    std::optional<std::variant<Approx_point, Approx_line_2>> res = CGAL::intersection(l, boundary_line);
-    Approx_point inter_pt = std::get<Approx_point>(res.value());
-    double x = inter_pt.x(), y = inter_pt.y();
-    switch(side) {
-    case Side_of_boundary::Left:
-      x = ctx->xmin();
-      break;
-    case Side_of_boundary::Right:
-      x = ctx->xmax();
-      break;
-    case Side_of_boundary::Top:
-      y = ctx->ymax();
-      break;
-    case Side_of_boundary::Bottom:
-      y = ctx->ymin();
-      break;
-    default:
-      CGAL_assertion(false && "Unexpected side of boundary");
+    std::optional<std::variant<Approx_point, Approx_line_2>> res =
+        CGAL::intersection(Approx_line_2(last_pt, pt), boundary_line);
+    Approx_point inter = ctx->make_on_boundary(std::get<Approx_point>(*res));
+    if(!ctx->contains_x(inter.x())) {
+      return;
     }
-    last_pt = Approx_point(x, y);
+    last_pt = inter;
     *ctx.out_it++ = last_pt;
   }
 
@@ -375,6 +372,7 @@ public:
       return polyline;
     }
 
+    polyline.reserve(static_cast<std::size_t>(m_ctx.bbox().x_span() / m_ctx.approx_error));
     const X_monotone_curve_2& curve = he->curve();
     Execution_context ctx(m_ctx, curve, m_approximate_2, polyline);
     std::optional<Approx_point> last_pt;
@@ -384,49 +382,44 @@ public:
                         if(last_pt->x() < ctx->xmin() && pt.x() >= ctx->xmin()) {
                           update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Left);
                         }
-
-                        if(last_pt->y() <= ctx->ymax()) {
-                          if(last_pt->y() < ctx->ymin() && pt.y() >= ctx->ymin()) {
+                        if(last_pt->y() < ctx->ymin()) {
+                          if(pt.y() >= ctx->ymin()) {
+                            *ctx.out_it++ = last_pt.value();
                             update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Bottom);
                           }
                           if(pt.y() > ctx->ymax()) {
                             update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Top);
-                            *ctx.out_it++ = pt;
                           }
-                        } else {
+                        } else if(last_pt->y() > ctx->ymax()) {
                           if(pt.y() <= ctx->ymax()) {
+                            *ctx.out_it++ = last_pt.value();
                             update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Top);
                           }
                           if(pt.y() < ctx->ymin()) {
                             update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Bottom);
-                            *ctx.out_it++ = pt;
+                          }
+                        } else {
+                          if(pt.y() < ctx->ymin()) {
+                            update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Bottom);
+                          } else if(pt.y() > ctx->ymax()) {
+                            update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Top);
                           }
                         }
-
                         if(last_pt->x() <= ctx->xmax() && pt.x() > ctx->xmax()) {
                           update_on_crossing_boundary(ctx, last_pt.value(), pt, Side_of_boundary::Right);
                         }
-                      } else if(ctx->contains_x(pt.x())) {
+
+                        if(!(pt.y() > ctx->ymax() && last_pt->y() > ctx->ymax() ||
+                             pt.y() < ctx->ymin() && last_pt->y() < ctx->ymin())) {
+                          *ctx.out_it++ = pt;
+                        }
+                      } else {
                         *ctx.out_it++ = pt;
-                        last_pt = pt;
-                        return;
                       }
 
-                      if(ctx->contains(pt)) {
-                        *ctx.out_it++ = pt;
-                      }
                       last_pt = pt;
                     }),
                     true);
-
-    if(last_pt.has_value() && !ctx->contains(last_pt.value()) && ctx->contains_x(last_pt.value().x())) {
-      *ctx.out_it++ = last_pt.value();
-    }
-
-    std::cout << "Approximate curve: " << polyline.size() << " points." << std::endl;
-    for(const auto& pt : polyline) {
-      std::cout << "Point: (" << pt.x() << ", " << pt.y() << ")\n";
-    }
 
     return polyline;
   }

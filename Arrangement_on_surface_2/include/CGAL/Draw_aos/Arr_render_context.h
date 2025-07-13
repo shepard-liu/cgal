@@ -75,36 +75,35 @@ public:
   const Bbox_2& bbox() const { return m_bbox; }
 
   bool strictly_contains_x(double x) const { return xmin() < x && x <= xmax(); }
-  bool strictly_contains_x(FT x) const { return FT(xmin()) < x && x <= FT(xmax()); }
+  bool strictly_contains_x(FT x) const { return to_ft(xmin()) < x && x <= to_ft(xmax()); }
 
   bool strictly_contains_y(double y) const { return ymin() < y && y <= ymax(); }
-  bool strictly_contains_y(FT y) const { return FT(ymin()) < y && y <= FT(ymax()); }
+  bool strictly_contains_y(FT y) const { return to_ft(ymin()) < y && y <= to_ft(ymax()); }
 
-  bool strictly_contains(const Point_2& pt) const { return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y()); }
-  bool strictly_contains(const Approx_point& pt) const {
-    return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y());
-  }
+  bool strictly_contains(Point_2 pt) const { return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y()); }
+  bool strictly_contains(Approx_point pt) const { return strictly_contains_x(pt.x()) && strictly_contains_y(pt.y()); }
 
   bool contains_x(double x) const { return xmin() <= x && x <= xmax(); }
-  bool contains_x(FT x) const { return FT(xmin()) <= x && x <= FT(xmax()); }
+  bool contains_x(FT x) const { return to_ft(xmin()) <= x && x <= to_ft(xmax()); }
 
   bool contains_y(double y) const { return ymin() <= y && y <= ymax(); }
-  bool contains_y(FT y) const { return FT(ymin()) <= y && y <= FT(ymax()); }
+  bool contains_y(FT y) const { return to_ft(ymin()) <= y && y <= to_ft(ymax()); }
 
-  bool contains(const Approx_point& pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
-  bool contains(const Point_2& pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
+  bool contains(Approx_point pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
+  bool contains(Point_2 pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
 
-  bool is_on_boundary(const Approx_point& pt) const {
+  bool is_on_boundary(Approx_point pt) const {
     return (pt.x() == xmin() || pt.x() == xmax()) && contains_y(pt.y()) ||
            (pt.y() == ymin() || pt.y() == ymax()) && contains_x(pt.x());
   }
-  bool is_on_boundary(const Point_2& pt) const {
-    return (pt.x() == FT(xmin()) || pt.x() == FT(xmax())) && contains_y(pt.y()) ||
-           (pt.y() == FT(ymin()) || pt.y() == FT(ymax())) && contains_x(pt.x());
+  bool is_on_boundary(Point_2 pt) const {
+    return (pt.x() == to_ft(xmin()) || pt.x() == to_ft(xmax())) && contains_y(pt.y()) ||
+           (pt.y() == to_ft(ymin()) || pt.y() == to_ft(ymax())) && contains_x(pt.x());
   }
 
 private:
   const Bbox_2 m_bbox;
+  const Construct_coordinate<GeomTraits> to_ft;
 };
 
 template <typename GeomTraits>
