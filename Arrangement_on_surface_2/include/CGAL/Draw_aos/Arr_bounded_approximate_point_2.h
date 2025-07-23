@@ -2,8 +2,6 @@
 #ifndef CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_POINT_2_H
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_POINT_2_H
 
-#include <utility>
-
 #include <CGAL/Draw_aos/type_utils.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
 
