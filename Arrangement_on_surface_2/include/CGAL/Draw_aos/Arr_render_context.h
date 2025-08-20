@@ -10,8 +10,8 @@
 #include <CGAL/Arr_trapezoid_ric_point_location.h>
 #include <CGAL/Arrangement_2.h>
 #include <CGAL/Draw_aos/Arr_approximation_cache.h>
-#include <CGAL/Draw_aos/Arr_portals.h>
 #include <CGAL/Draw_aos/type_utils.h>
+#include "CGAL/Draw_aos/Arr_face_point_generator.h"
 
 #if defined(CGAL_DRAW_AOS_DEBUG)
 #include <fstream>
@@ -65,7 +65,7 @@ class Arr_bounds_context_mixin
 {
   using Geom_traits = GeomTraits;
   using Approx_traits = Arr_approximate_traits<Geom_traits>;
-  using Point_geom = typename Approx_traits::Point_geom;
+  using Point_geom = typename Approx_traits::Point;
   using Approx_nt = typename Approx_traits::Approx_nt;
 
 protected:
@@ -97,16 +97,15 @@ class Arr_render_context : public Arr_cancellable_context_mixin
 {
   using Cancellable_context_mixin = Arr_cancellable_context_mixin;
   using Geom_traits = typename Arrangement::Geometry_traits_2;
-  using Portals = Arr_portals<Arrangement>;
-  using Feature_portals_map = typename Portals::Feature_portals_map;
+  using Face_points_map = typename Arr_face_point_generator<Arrangement>::Face_points_map;
 
 public:
-  Arr_render_context(const Arrangement& arr, const Feature_portals_map& portals_map, double approx_error)
+  Arr_render_context(const Arrangement& arr, double approx_error, Face_points_map& face_points)
       : Cancellable_context_mixin()
       , m_arr(arr)
       , m_traits(*arr.geometry_traits())
-      , m_portals_map(portals_map)
-      , m_approx_error(approx_error) {
+      , m_approx_error(approx_error)
+      , m_face_points(face_points) {
 #if defined(CGAL_DRAW_AOS_DEBUG) && defined(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR)
     std::filesystem::path debug_file_dir(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR);
     // clear the index file.
@@ -118,7 +117,7 @@ public:
   const double m_approx_error;
   const Arrangement& m_arr;
   const Geom_traits& m_traits;
-  const Feature_portals_map& m_portals_map;
+  const Face_points_map& m_face_points;
 
 #if defined(CGAL_DRAW_AOS_DEBUG)
   std::shared_ptr<int> debug_counter = std::make_shared<int>(0);

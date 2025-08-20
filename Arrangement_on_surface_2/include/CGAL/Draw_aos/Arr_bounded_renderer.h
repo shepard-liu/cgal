@@ -5,7 +5,6 @@
 #include <CGAL/Draw_aos/Arr_approximation_cache.h>
 #include <CGAL/Draw_aos/Arr_bounded_approximate_face.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
-#include <CGAL/Draw_aos/Arr_portals.h>
 #include <CGAL/Draw_aos/type_utils.h>
 
 namespace CGAL {
@@ -30,12 +29,12 @@ public:
   Approx_cache render() const {
     Approx_cache cache;
     if(m_ctx.is_cancelled()) return cache;
-    cache.reserve_faces(m_ctx.m_arr.number_of_faces());
-    cache.reserve_halfedges(m_ctx.m_arr.number_of_halfedges());
-    cache.reserve_vertices(m_ctx.m_arr.number_of_vertices());
+    cache.vertices().reserve(m_ctx.m_arr.number_of_vertices());
+    cache.halfedges().reserve(m_ctx.m_arr.number_of_halfedges());
+    cache.faces().reserve(m_ctx.m_arr.number_of_faces());
 
-    Arr_bounded_render_context<Arrangement> ctx(m_ctx, m_bbox, cache);
-    Arr_bounded_approximate_face<Arrangement> bounded_approx_face(ctx);
+    Arr_bounded_render_context<Arrangement> derived_ctx(m_ctx, m_bbox, cache);
+    Arr_bounded_approximate_face<Arrangement> bounded_approx_face(derived_ctx);
     for(Face_const_handle fh = m_ctx.m_arr.faces_begin(); fh != m_ctx.m_arr.faces_end(); ++fh) bounded_approx_face(fh);
 
     return cache;

@@ -15,7 +15,7 @@ class Arr_bounded_approximate_vertex
   using Geom_traits = typename Arrangement::Geometry_traits_2;
   using Point_2 = typename Geom_traits::Point_2;
   using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
-  using Point_geom = typename Arr_approximate_traits<Geom_traits>::Point_geom;
+  using Point_geom = typename Arr_approximate_traits<Geom_traits>::Point;
   using Bounded_render_context = Arr_bounded_render_context<Arrangement>;
 
 public:
@@ -32,7 +32,8 @@ public:
    * @return const Point_geom&
    */
   const Point_geom& operator()(const Vertex_const_handle& vh) const {
-    auto [point, inserted] = m_ctx.m_cache.try_emplace(vh);
+    auto [iter, inserted] = m_ctx.m_cache.vertices().try_emplace(vh);
+    Point_geom& point = iter->second;
     if(!inserted) return point;
     return point = Arr_projector(m_ctx.m_traits).project(m_ctx.m_traits.approximate_2_object()(vh->point()));
   }
