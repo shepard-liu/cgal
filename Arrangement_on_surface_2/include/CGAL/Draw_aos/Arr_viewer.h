@@ -21,14 +21,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdlib>
-#include <string>
 #include <type_traits>
-#include <vector>
-#include "CGAL/Draw_aos/Arr_projector.h"
-#include "CGAL/IO/polygon_soup_io.h"
-
-#include <boost/iterator/function_output_iterator.hpp>
-#include <boost/range/iterator_range.hpp>
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
@@ -47,10 +40,12 @@
 #include <CGAL/Graphics_scene.h>
 #include <CGAL/Graphics_scene_options.h>
 #include <CGAL/Buffer_for_vao.h>
+#include <CGAL/Arr_enums.h>
 #include <CGAL/Draw_aos/type_utils.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
 #include <CGAL/Draw_aos/Arr_bounded_renderer.h>
 #include <CGAL/Draw_aos/Arr_face_point_generator.h>
+#include <CGAL/Draw_aos/Arr_projector.h>
 
 namespace CGAL {
 namespace draw_aos {
@@ -97,7 +92,7 @@ protected:
    * \note For arrangement induced by unbounded curves, the bounding box only fits all vertices.
    * \return Bbox_2
    */
-  Bbox_2 initial_bbox() const {
+  Bbox_2 arr_bbox() const {
     const auto& traits = *m_arr.geometry_traits();
     Bbox_2 bbox;
     // Computes a rough bounding box from the vertices.
@@ -190,7 +185,7 @@ protected:
   Arr_viewport_helpers(const Arrangement& arr)
       : m_arr(arr) {}
 
-  Bbox_2 initial_bbox() const { return Bbox_2(0, 0, 2 * CGAL_PI, CGAL_PI); }
+  Bbox_2 arr_bbox() const { return Bbox_2(0, 0, 2 * CGAL_PI, CGAL_PI); }
 
   Bbox_2 screen_to_world(const Camera& cam) const { return Bbox_2(0, 0, 2 * CGAL_PI, CGAL_PI); }
 
@@ -220,8 +215,8 @@ private:
 
 /*! Viewer for visualizing arrangements on surface.
  *
- * \tparam Arrangement parameterized by a geometry traits that models Approximate_2
- * \tparam GSOptions Graphics scene options
+ * \tparam Arrangement
+ * \tparam GSOptions
  */
 template <typename Arrangement, typename GSOptions>
 class Arr_viewer : public Qt::Basic_viewer, Arr_viewport_helpers<Arrangement>
@@ -246,6 +241,8 @@ class Arr_viewer : public Qt::Basic_viewer, Arr_viewport_helpers<Arrangement>
     Bbox_2 bbox;
     double approx_error{0};
   };
+
+  constexpr static bool Is_on_curved_surface = is_or_derived_from_curved_surf_traits_v<Geom_traits>;
 
 private:
   static bool contains(const Bbox_2& bbox, const Point& pt) {
@@ -288,12 +285,17 @@ private:
     }
     // add edges
     for(const auto& [he, polyline] : cache.halfedges()) {
-      if(!m_gso.draw_edge(m_arr, he) || polyline.size() < 2) continue;
+      if(he->direction() == ARR_RIGHT_TO_LEFT || !m_gso.draw_edge(m_arr, he) || polyline.size() < 2) continue;
       bool colored_edge = m_gso.colored_edge(m_arr, he);
       auto color = colored_edge ? m_gso.edge_color(m_arr, he) : CGAL::IO::Color();
-      for(size_t i = 0; i < polyline.size() - 1; ++i) {
+      // skip first two if starts with a sep point.
+      int start_idx = Approx_traits::is_null(polyline.front()) ? 2 : 0;
+      // skip last two if ends with a sep point.
+      int end_idx = Approx_traits::is_null(polyline.back()) ? polyline.size() - 2 : polyline.size();
+      for(int i = start_idx; i < end_idx - 1; ++i) {
         const auto& cur_pt = polyline[i];
         const auto& next_pt = polyline[i + 1];
+        if(Approx_traits::is_null(cur_pt) || Approx_traits::is_null(next_pt)) continue;
         auto mid_pt = CGAL::midpoint(cur_pt, next_pt);
         if(!contains(bbox, mid_pt)) continue;
         if(colored_edge)
@@ -312,26 +314,31 @@ private:
     }
   }
 
-  /**
-   * @brief Rerender scene within the given bounding box.
+  /*!
+   * \brief Rerender scene within the given bounding box.
 
-   * @param bbox
+   * \param bbox
    */
   void rerender(const Render_params& params) {
-    if(params == m_last_render_params) return;
-    m_last_render_params = params;
+    if(params == m_last_params) return;
+    m_last_params = params;
     m_gs.clear();
     render_arr(params);
     Basic_viewer::redraw();
   }
 
 public:
-  Arr_viewer(QWidget* parent, const Arrangement& arr, const GSOptions& gso, const char* title = "Arrangement Viewer")
+  Arr_viewer(QWidget* parent, const Arrangement& arr, const GSOptions& gso, const char* title, Bbox_2 initial_bbox)
       : Basic_viewer(parent, m_gs, title)
       , Helpers(arr)
       , m_gso(gso)
       , m_arr(arr)
-      , m_proj(*arr.geometry_traits()) {}
+      , m_proj(*arr.geometry_traits()) {
+    if(initial_bbox.x_span() == 0 || initial_bbox.y_span() == 0 || Is_on_curved_surface)
+      m_initial_bbox = this->arr_bbox();
+    else
+      m_initial_bbox = initial_bbox;
+  }
 
   virtual void draw() override {
     Render_params params = compute_render_params();
@@ -351,7 +358,7 @@ public:
     if(!m_initialized) {
       // The initial render must be done with original camera parameters or the width of edges gets exaggerated.
       // So we fit the camera after initial render.
-      this->fit_camera(this->initial_bbox(), *this->camera_);
+      this->fit_camera(m_initial_bbox, *this->camera_);
       m_initialized = true;
     }
 
@@ -365,8 +372,9 @@ private:
   GSOptions m_gso;
   const Arrangement& m_arr;
   bool m_initialized{false};
+  Bbox_2 m_initial_bbox;
   const Arr_projector<Geom_traits> m_proj;
-  Render_params m_last_render_params;
+  Render_params m_last_params;
 };
 
 } // namespace draw_aos

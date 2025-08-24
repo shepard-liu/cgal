@@ -33,11 +33,11 @@
 #include <CGAL/Graphics_scene_options.h>
 #include <CGAL/Random.h>
 #include <CGAL/config.h>
-#include "CGAL/Arr_observer.h"
-#include "CGAL/basic.h"
-#include "CGAL/unordered_flat_map.h"
-#include "CGAL/Draw_aos/type_utils.h"
+#include <CGAL/Arr_observer.h>
+#include <CGAL/unordered_flat_map.h>
+#include <CGAL/Draw_aos/type_utils.h>
 #include <CGAL/Draw_aos/Arr_viewer.h>
+#include "CGAL/Bbox_2.h"
 
 namespace CGAL {
 
@@ -69,7 +69,7 @@ public:
     // std::cout << "add_face()\n";
     for(Inner_ccb_const_iterator it = face->inner_ccbs_begin(); it != face->inner_ccbs_end(); ++it) add_ccb(*it);
 
-    if (! face->is_unbounded()) {
+    if(!face->is_unbounded()) {
       for(Outer_ccb_const_iterator it = face->outer_ccbs_begin(); it != face->outer_ccbs_end(); ++it) {
         add_ccb(*it);
         draw_region(*it);
@@ -130,13 +130,13 @@ public:
   /// Compile time dispatching
 
   ///
-  template <typename T, typename A, std::enable_if_t<!has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<!has_approximate_point_v<T, A>, int> = 0>
   void draw_region_impl2(const T& /* traits */, const A& /* approximate */, Halfedge_const_handle curr) {
     draw_exact_region(curr);
   }
 
   ///
-  template <typename T, typename A, std::enable_if_t<has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<has_approximate_point_v<T, A>, int> = 0>
   auto draw_region_impl2(const T& /* traits */, const A& approx, Halfedge_const_handle curr) {
     draw_approximate_region(curr, approx);
   }
@@ -228,14 +228,14 @@ public:
   }
 
   ///
-  template <typename T, typename A, std::enable_if_t<!has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<!has_approximate_point_v<T, A>, int> = 0>
   void draw_point_impl2(
       const T& /* traits */, const A& /* approximate */, const Point& p, bool colored, const CGAL::IO::Color& c) {
     draw_exact_point(p, colored, c);
   }
 
   ///
-  template <typename T, typename A, std::enable_if_t<has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<has_approximate_point_v<T, A>, int> = 0>
   auto
   draw_point_impl2(const T& /* traits */, const A& approx, const Point& p, bool colored, const CGAL::IO::Color& c) {
     draw_approximate_point(p, approx, colored, c);
@@ -395,7 +395,7 @@ public:
   }
 
   ///
-  template <typename T, typename A, std::enable_if_t<!has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<!has_approximate_point_v<T, A>, int> = 0>
   void draw_curve_impl2(const T& /* traits */,
                         const A& /* approximate */,
                         const X_monotone_curve& xcv,
@@ -405,7 +405,7 @@ public:
   }
 
   ///
-  template <typename T, typename A, std::enable_if_t<has_operator_point_v<T, A>, int> = 0>
+  template <typename T, typename A, std::enable_if_t<has_approximate_point_v<T, A>, int> = 0>
   auto draw_curve_impl2(
       const T& /* traits */, const A& approx, const X_monotone_curve& xcv, bool colored, const CGAL::IO::Color& c) {
     draw_approximate_curve(xcv, approx, colored, c);
@@ -618,21 +618,23 @@ private:
 };
 
 void draw_unimplemented() {
-  std::cerr << "Geometry traits class is required to support approximation of Point_2 and "
+  std::cerr << "Geometry traits type of arrangement is required to support approximation of Point_2 and "
                "X_monotone_curve_2. Traits on curved surfaces needs additional support for parameterization."
             << std::endl;
   exit(1);
 }
 
 template <typename Arrangement, typename GSOptions>
-void draw_impl_planar(QApplication& app, const Arrangement& arr, const GSOptions& gso, const char* title) {
-  Arr_viewer viewer(app.activeWindow(), arr, gso, title);
+void draw_impl_planar(
+    const Arrangement& arr, const GSOptions& gso, const char* title, Bbox_2 initial_bbox, QApplication& app) {
+  Arr_viewer viewer(app.activeWindow(), arr, gso, title, initial_bbox);
   viewer.show();
   app.exec();
 }
 
 template <typename Arrangement, typename GSOptions>
-void draw_impl_agas(QApplication& app, const Arrangement& arr, const GSOptions& gso, const char* title) {
+void draw_impl_agas(
+    const Arrangement& arr, const GSOptions& gso, const char* title, Bbox_2 initial_bbox, QApplication& app) {
   using Halfedge_const_handle = typename Arrangement::Halfedge_const_handle;
   using Face_const_handle = typename Arrangement::Face_const_handle;
   using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
@@ -640,7 +642,7 @@ void draw_impl_agas(QApplication& app, const Arrangement& arr, const GSOptions& 
   using X_monotone_curve_2 = typename Geom_traits::X_monotone_curve_2;
   using Direction_3 = typename Geom_traits::Direction_3;
   using Point_2 = typename Geom_traits::Point_2;
-  using Agas_template_args = template_args<Geom_traits>;
+  using Agas_template_args = tmpl_args<Geom_traits>;
 
   Arrangement derived_arr(arr);
   auto vertex_map = map_from_pair_ranges<Vertex_const_handle, Vertex_const_handle>(derived_arr.vertex_handles(),
@@ -659,88 +661,112 @@ void draw_impl_agas(QApplication& app, const Arrangement& arr, const GSOptions& 
 
   // derived_gso proxies the call to the original gso
   GSOptions derived_gso(gso);
-  derived_gso.draw_vertex = [&tracker, &gso, &arr, &vertex_map](const Arrangement&, const Vertex_const_handle& vh) {
+  derived_gso.draw_vertex = [&](const Arrangement&, const Vertex_const_handle& vh) {
     Vertex_const_handle original_vh = tracker.original_vertex(vh);
     if(original_vh == Vertex_const_handle() || vertex_map.find(original_vh) == vertex_map.end()) return false;
     return gso.draw_vertex(arr, vertex_map.at(original_vh));
   };
-  derived_gso.colored_vertex = [&tracker, &gso, &arr, &vertex_map](const Arrangement&, const Vertex_const_handle& vh) {
+  derived_gso.colored_vertex = [&](const Arrangement&, const Vertex_const_handle& vh) {
     Vertex_const_handle original_vh = tracker.original_vertex(vh);
     if(original_vh == Vertex_const_handle() || vertex_map.find(original_vh) == vertex_map.end()) return false;
     return gso.colored_vertex(arr, vertex_map.at(original_vh));
   };
-  derived_gso.vertex_color = [&tracker, &gso, &arr, &vertex_map](const Arrangement&,
-                                                                 const Vertex_const_handle& vh) -> CGAL::IO::Color {
+  derived_gso.vertex_color = [&](const Arrangement&, const Vertex_const_handle& vh) -> CGAL::IO::Color {
     Vertex_const_handle original_vh = tracker.original_vertex(vh);
     if(original_vh == Vertex_const_handle() || vertex_map.find(original_vh) == vertex_map.end())
       return CGAL::IO::Color();
     return gso.vertex_color(arr, vertex_map.at(original_vh));
   };
-  derived_gso.draw_edge = [&tracker, &gso, &arr, &halfedge_map](const Arrangement&, const Halfedge_const_handle& he) {
+  derived_gso.draw_edge = [&](const Arrangement&, const Halfedge_const_handle& he) {
     Halfedge_const_handle original_he = tracker.original_halfedge(he);
     if(original_he == Halfedge_const_handle() || halfedge_map.find(original_he) == halfedge_map.end()) return false;
     return gso.draw_edge(arr, halfedge_map.at(original_he));
   };
-  derived_gso.colored_edge = [&tracker, &gso, &arr, &halfedge_map](const Arrangement&,
-                                                                   const Halfedge_const_handle& he) {
+  derived_gso.colored_edge = [&](const Arrangement&, const Halfedge_const_handle& he) {
     Halfedge_const_handle original_he = tracker.original_halfedge(he);
     if(original_he == Halfedge_const_handle() || halfedge_map.find(original_he) == halfedge_map.end()) return false;
     return gso.colored_edge(arr, halfedge_map.at(original_he));
   };
-  derived_gso.edge_color = [&tracker, &gso, &arr, &halfedge_map](const Arrangement&,
-                                                                 const Halfedge_const_handle& he) -> CGAL::IO::Color {
+  derived_gso.edge_color = [&](const Arrangement&, const Halfedge_const_handle& he) -> CGAL::IO::Color {
     Halfedge_const_handle original_he = tracker.original_halfedge(he);
     if(original_he == Halfedge_const_handle() || halfedge_map.find(original_he) == halfedge_map.end())
       return CGAL::IO::Color();
     return gso.edge_color(arr, halfedge_map.at(original_he));
   };
-  derived_gso.draw_face = [&tracker, &gso, &arr, &face_map](const Arrangement&, const Face_const_handle& fh) {
+  derived_gso.draw_face = [&](const Arrangement&, const Face_const_handle& fh) {
     Face_const_handle original_fh = tracker.original_face(fh);
     if(face_map.find(original_fh) == face_map.end()) return false;
     return gso.draw_face(arr, face_map.at(original_fh));
   };
-  derived_gso.colored_face = [&tracker, &gso, &arr, &face_map](const Arrangement&, const Face_const_handle& fh) {
+  derived_gso.colored_face = [&](const Arrangement&, const Face_const_handle& fh) {
     Face_const_handle original_fh = tracker.original_face(fh);
     if(face_map.find(original_fh) == face_map.end()) return false;
     return gso.draw_face(arr, face_map.at(original_fh));
   };
-  derived_gso.face_color = [&tracker, &gso, &arr, &face_map](const Arrangement&,
-                                                             const Face_const_handle& fh) -> CGAL::IO::Color {
+  derived_gso.face_color = [&](const Arrangement&, const Face_const_handle& fh) -> CGAL::IO::Color {
     Face_const_handle original_fh = tracker.original_face(fh);
     if(face_map.find(original_fh) == face_map.end()) return CGAL::IO::Color();
     return gso.face_color(arr, face_map.at(original_fh));
   };
 
-  Arr_viewer viewer(app.activeWindow(), derived_arr, derived_gso, title);
+  Arr_viewer viewer(app.activeWindow(), derived_arr, derived_gso, title, initial_bbox);
   viewer.show();
   app.exec();
 }
 
-template <typename Arrangement, typename GSOptions>
-void draw(QApplication& app, const Arrangement& arr, const GSOptions& gso, const char* title) {
+template <typename Arrangement, typename GSOptions, typename... Args>
+void draw(const Arrangement& arr, const GSOptions& gso, Args&&... args) {
   using Geom_traits = typename Arrangement::Geometry_traits_2;
 
-  // Arrangements on curved surfaces require special handling. The identification curve must be present to make the
-  // curved surface homeomorphic to a bounded plane.
-  if constexpr(!has_approximate_traits_v<Geom_traits>) return draw_unimplemented();
-  if constexpr(is_or_derived_from_agas_v<Geom_traits>) return draw_impl_agas(app, arr, gso, title);
-  return draw_impl_planar(app, arr, gso, title);
+  if constexpr(!has_approximate_traits_v<Geom_traits>)
+    return draw_unimplemented();
+  else if constexpr(is_or_derived_from_agas_v<Geom_traits>)
+    // Arrangements on curved surfaces require special handling. The identification curve must be present to make the
+    // curved surface homeomorphic to a bounded plane.
+    return draw_impl_agas(arr, gso, std::forward<Args>(args)...);
+  else
+    return draw_impl_planar(arr, gso, std::forward<Args>(args)...);
 }
 
 } // namespace draw_aos
 
-/// Draw an arrangement on surface.
+/*!
+ * \brief Draw an arrangement on surface.
+ *
+ * \tparam Arrangement
+ * \tparam GSOptions
+ * \param arr the arrangement to be drawn
+ * \param gso graphics scene options
+ * \param title title of the viewer window
+ * \param initial_bbox parameter space bounding box to be shown intially. If empty, the approximate bounding box of the
+ * arrangement is used. For arrangements induced by unbounded curves, the default initial bounding box is computed from
+ * vertex coordinates.
+ */
 template <typename Arrangement, typename GSOptions>
-void draw(const Arrangement& arr, const GSOptions& gso, const char* title = "2D Arrangement on Surface Viewer") {
+void draw(const Arrangement& arr,
+          const GSOptions& gso,
+          const char* title = "2D Arrangement on Surface Viewer",
+          Bbox_2 initial_bbox = Bbox_2()) {
   Qt::init_ogl_context(4, 3);
   int argc;
   QApplication app(argc, nullptr);
-  draw_aos::draw(app, arr, gso, title);
+  draw_aos::draw(arr, gso, title, initial_bbox, app);
 }
 
-/// Draw an arrangement on surface with default graphics scene options.
+/*!
+ * \brief Draw an arrangement on surface with default graphics scene options. Faces are colored randomly.
+ *
+ * \tparam Arrangement
+ * \param arr the arrangement to be drawn
+ * \param title title of the viewer window
+ * \param initial_bbox parameter space bounding box to be shown intially. If empty, the approximate bounding box of the
+ * arrangement is used. For arrangements induced by unbounded curves, the default initial bounding box is computed from
+ * vertex coordinates.
+ */
 template <typename Arrangement>
-void draw(const Arrangement& arr, const char* title = "2D Arrangement on Surface Viewer") {
+void draw(const Arrangement& arr,
+          const char* title = "2D Arrangement on Surface Viewer",
+          Bbox_2 initial_bbox = Bbox_2()) {
   using Face_const_handle = typename Arrangement::Face_const_handle;
   using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
   using Halfedge_const_handle = typename Arrangement::Halfedge_const_handle;
@@ -768,7 +794,7 @@ void draw(const Arrangement& arr, const char* title = "2D Arrangement on Surface
     return get_random_color(random);
   };
 
-  draw(arr, gso, title);
+  draw(arr, gso, title, initial_bbox);
 }
 
 #define CGAL_ARR_TYPE CGAL::Arrangement_on_surface_2<GeometryTraits_2, TopologyTraits>

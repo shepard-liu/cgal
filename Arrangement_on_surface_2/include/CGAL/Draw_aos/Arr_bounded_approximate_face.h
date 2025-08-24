@@ -13,7 +13,6 @@
 #include "CGAL/basic.h"
 #include <CGAL/Draw_aos/Arr_bounded_approximate_halfedge.h>
 #include <CGAL/Draw_aos/Arr_bounded_approximate_vertex.h>
-#include <CGAL/Draw_aos/Arr_projector.h>
 #include <CGAL/Draw_aos/Arr_bounded_face_triangulator.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
 #include <CGAL/Draw_aos/type_utils.h>
@@ -59,30 +58,24 @@ private:
   public:
     Context(const Bounded_render_context& ctx, Triangulator& triangulator)
         : Bounded_render_context(ctx)
-        , m_proj(ctx.m_traits)
-        , m_triangulator(triangulator)
-        , m_bounded_approx_vertex(ctx)
-        , m_bounded_approx_halfedge(ctx) {}
+        , m_triangulator(triangulator) {}
     // Let's not accidentally copy this object.
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
 
     void insert(Point pt) {
-      if(pt == m_last_pt || !this->contains_x(pt.x())) return;
+      if(Approx_traits::is_null(pt) || pt == m_last_pt) return;
       pt = Point(pt.x(), std::clamp(pt.y(), this->ymin(), this->ymax()));
       m_last_pt = pt;
       m_triangulator.insert(pt);
     }
+
     void start_ccb() { m_triangulator.start_ccb(); }
     void end_ccb() { m_triangulator.end_ccb(); }
+    const std::optional<Point>& last_pt() const { return m_last_pt; }
 
   private:
     Triangulator& m_triangulator;
-    const Arr_projector<Geom_traits> m_proj;
-
-  public:
-    Bounded_approximate_vertex m_bounded_approx_vertex;
-    Bounded_approximate_halfedge m_bounded_approx_halfedge;
     std::optional<Point> m_last_pt;
   };
 
@@ -90,65 +83,65 @@ private:
   static Arr_parameter_space side_of_fictitious_edge(const Halfedge_const_handle& he) {
     const auto& source = he->source();
     const auto& target = he->target();
-    Arr_parameter_space src_x_space = source->parameter_space_in_x();
-    Arr_parameter_space src_y_space = source->parameter_space_in_y();
-    Arr_parameter_space tgt_x_space = target->parameter_space_in_x();
-    Arr_parameter_space tgt_y_space = target->parameter_space_in_y();
-    if(src_x_space == tgt_x_space && src_x_space != ARR_INTERIOR) return src_x_space;
-    if(src_y_space == tgt_y_space && src_y_space != ARR_INTERIOR) return src_y_space;
+    auto sx = source->parameter_space_in_x();
+    auto sy = source->parameter_space_in_y();
+    auto tx = target->parameter_space_in_x();
+    auto ty = target->parameter_space_in_y();
+    if(sx == tx && sx != ARR_INTERIOR) return sx;
+    if(sy == ty && sy != ARR_INTERIOR) return sy;
     CGAL_assertion(false && "Unexpected parameter space for fictitious edge vertices.");
     return ARR_INTERIOR;
   }
 
   // Generate dummy segment(directed left to right) for the fictitious edge he.
   static Polyline approximate_fictitious_edge(const Context& ctx, const Halfedge_const_handle& he) {
-    Arr_parameter_space side = side_of_fictitious_edge(he);
+    auto side = side_of_fictitious_edge(he);
     // There's no need to handle fictitious edges on left or right boundaries.
     if(side == ARR_LEFT_BOUNDARY || side == ARR_RIGHT_BOUNDARY) return Polyline{};
     if(side == ARR_BOTTOM_BOUNDARY) {
-      Point from_pt(ctx.m_last_pt.has_value() ? ctx.m_last_pt->x() : ctx.xmin(), ctx.ymin());
+      Point from_pt(ctx.last_pt().has_value() ? ctx.last_pt()->x() : ctx.xmin(), ctx.ymin());
       Point to_pt(ctx.xmax(), ctx.ymin());
       return Polyline{from_pt, to_pt};
     }
     if(side == ARR_TOP_BOUNDARY) {
       Point from_pt(ctx.xmin(), ctx.ymax());
-      Point to_pt(ctx.m_last_pt.has_value() ? ctx.m_last_pt->x() : ctx.xmax(), ctx.ymax());
-      return Polyline{from_pt, to_pt};
+      Point to_pt(ctx.last_pt().has_value() ? ctx.last_pt()->x() : ctx.xmax(), ctx.ymax());
+      return Polyline{to_pt, from_pt};
     }
     CGAL_assertion(false && "Unexpected side for a fictitious edge.");
     return Polyline{};
   }
 
-  static void approximate_vertex(Context& ctx, const Vertex_const_handle& vh) {
+  void approximate_vertex(Context& ctx, const Vertex_const_handle& vh) const {
     if(vh->is_at_open_boundary()) return;
-    ctx.m_bounded_approx_vertex(vh);
+    m_bounded_approx_vertex(vh);
   }
 
-  template <typename DirectionTag>
-  static void approximate_halfedge(Context& ctx, const Halfedge_const_handle& he, DirectionTag dir_tag) {
+  void approximate_halfedge(Context& ctx, const Halfedge_const_handle& he) const {
     const Polyline& polyline =
-        he->is_fictitious() ? approximate_fictitious_edge(ctx, he) : ctx.m_bounded_approx_halfedge(he);
+        he->is_fictitious() ? approximate_fictitious_edge(ctx, he) : m_bounded_approx_halfedge(he);
     for(const auto& curr_pt : polyline) ctx.insert(curr_pt);
   }
 
-  static void approximate_ccb(Context& ctx, Ccb_halfedge_const_circulator start_circ) {
+  void approximate_ccb(Context& ctx, Ccb_halfedge_const_circulator start) const {
     // Try to start on a concrete halfedge.
     // For any unbounded face, there can't be more than 4 adjacent fictitious edges.
-    for(int i = 0; i < 4 && start_circ->is_fictitious(); ++i) ++start_circ;
+    for(int i = 0; i < 4 && start->is_fictitious(); ++i) ++start;
 
     ctx.start_ccb();
-    auto circ = start_circ;
+    auto circ = start;
     do {
-      circ->direction() == ARR_LEFT_TO_RIGHT ? approximate_halfedge(ctx, circ, Left_to_right_tag{})
-                                             : approximate_halfedge(ctx, circ, Right_to_left_tag{});
+      approximate_halfedge(ctx, circ);
       approximate_vertex(ctx, circ->target());
-    } while(++circ != start_circ);
+    } while(++circ != start);
     ctx.end_ccb();
   }
 
 public:
   Arr_bounded_approximate_face(const Bounded_render_context& ctx)
-      : m_ctx(ctx) {}
+      : m_ctx(ctx)
+      , m_bounded_approx_halfedge(ctx)
+      , m_bounded_approx_vertex(ctx) {}
 
   /*!
    * \brief Approximate an arrangement face with a bunch of triangles.
@@ -165,18 +158,17 @@ public:
     auto triangulator = Triangulator(m_ctx, fh);
     auto ctx = Context(m_ctx, triangulator);
 
-    if(!Is_on_curved_surface && fh->is_unbounded()) {
+    if(!Is_on_curved_surface && !fh->has_outer_ccb()) {
       // Skip approximation of the unbounded face in planar arrangements.
       // However, degenerate holes still need to be approximated.
       for(auto inner_ccb = fh->inner_ccbs_begin(); inner_ccb != fh->inner_ccbs_end(); ++inner_ccb) {
         auto circ = *inner_ccb;
         do {
           if(circ->face() != circ->twin()->face()) continue;
-          ctx.m_bounded_approx_halfedge(circ);
+          m_bounded_approx_halfedge(circ);
         } while(++circ != *inner_ccb);
       }
-      for(auto vh = fh->isolated_vertices_begin(); vh != fh->isolated_vertices_end(); ++vh)
-        ctx.m_bounded_approx_vertex(vh);
+      for(auto vh = fh->isolated_vertices_begin(); vh != fh->isolated_vertices_end(); ++vh) m_bounded_approx_vertex(vh);
       return ts;
     }
 
@@ -192,6 +184,8 @@ public:
 
 private:
   const Bounded_render_context& m_ctx;
+  Bounded_approximate_halfedge m_bounded_approx_halfedge;
+  Bounded_approximate_vertex m_bounded_approx_vertex;
 };
 
 } // namespace draw_aos

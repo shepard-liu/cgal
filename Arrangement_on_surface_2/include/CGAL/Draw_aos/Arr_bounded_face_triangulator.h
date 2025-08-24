@@ -60,33 +60,48 @@ class Arr_bounded_face_triangulator
 
   enum Point_type { Vertex_only, Constraint_only, Vertex_and_constraint };
 
-  struct Point_index
+  /*!
+   * \brief A index wrapper defaulted to invalid.
+   */
+  class Index
   {
+  public:
+    Index() = default;
+    Index(std::size_t idx)
+        : m_index(idx) {}
+
+    bool is_valid() const { return m_index != Invalid_index; }
+    operator std::size_t() const { return m_index; }
+
+  private:
     constexpr static std::size_t Invalid_index = std::numeric_limits<std::size_t>::max();
-    std::size_t index{Invalid_index};
-    Point_index() = default;
-    Point_index(std::size_t idx)
-        : index(idx) {}
-    bool is_valid() const { return index != Invalid_index; }
-    operator std::size_t() const { return index; }
+    std::size_t m_index{Invalid_index};
   };
+
   using Epick = Exact_predicates_inexact_constructions_kernel;
-  using Vb = Triangulation_vertex_base_with_info_2<Point_index, Epick>;
+  using Vb = Triangulation_vertex_base_with_info_2<Index, Epick>;
   using Fb = Constrained_triangulation_face_base_2<Epick>;
   using Tds = Triangulation_data_structure_2<Vb, Fb>;
   // For planar arrangements, Constrained_triangulation_2 is enough.
   using Ct = std::conditional_t<Is_on_curved_surface,
                                 Constrained_Delaunay_triangulation_2<Epick, Tds, Exact_predicates_tag>,
                                 Constrained_triangulation_2<Epick, Tds, Exact_predicates_tag>>;
+
   using KPoint = Epick::Point_2;
-  using KPoint_with_info = std::pair<KPoint, Point_index>;
+  using KPoint_with_index = std::pair<KPoint, Index>;
   using Bounded_render_context = Arr_bounded_render_context<Arrangement>;
 
 private:
-  static KPoint transform_point(Point pt) { return KPoint(pt.x(), pt.y()); }
+  static KPoint to_kernel_point(Point pt) { return KPoint(pt.x(), pt.y()); }
 
+  /*!
+   * \brief Offset a point on a specific boundary outward by a given offset.
+   *
+   * \pre side != Boundary_side::None
+   */
   static Point offset_boundary_point(Point pt, Boundary_side side, double offset) {
     CGAL_precondition(side != Boundary_side::None);
+
     switch(side) {
     case Boundary_side::Left:
       return Point(pt.x() - offset, pt.y());
@@ -101,19 +116,27 @@ private:
     }
   }
 
+  /*!
+   * \brief Find the shared boundary side of two points, or None if they are not on the same boundary.
+   */
   Boundary_side shared_boundary(const Point& pt1, const Point& pt2) const {
-    if(pt1.x() == m_ctx.xmin() && pt2.x() == m_ctx.xmin() && m_ctx.contains_y(pt1.y()) && m_ctx.contains_y(pt2.y()))
-      return Boundary_side::Left;
-    if(pt1.x() == m_ctx.xmax() && pt2.x() == m_ctx.xmax() && m_ctx.contains_y(pt1.y()) && m_ctx.contains_y(pt2.y()))
-      return Boundary_side::Right;
-    if(pt1.y() == m_ctx.ymin() && pt2.y() == m_ctx.ymin() && m_ctx.contains_x(pt1.x()) && m_ctx.contains_x(pt2.x()))
-      return Boundary_side::Bottom;
-    if(pt1.y() == m_ctx.ymax() && pt2.y() == m_ctx.ymax() && m_ctx.contains_x(pt1.x()) && m_ctx.contains_x(pt2.x()))
-      return Boundary_side::Top;
+    if(m_ctx.is_on_left(pt1) && m_ctx.is_on_left(pt2)) return Boundary_side::Left;
+    if(m_ctx.is_on_right(pt1) && m_ctx.is_on_right(pt2)) return Boundary_side::Right;
+    if(m_ctx.is_on_bottom(pt1) && m_ctx.is_on_bottom(pt2)) return Boundary_side::Bottom;
+    if(m_ctx.is_on_top(pt1) && m_ctx.is_on_top(pt2)) return Boundary_side::Top;
     return Boundary_side::None;
   }
 
+  /*!
+   * \brief Add a helper point on the shared boundary of two points if they are on the same boundary side.
+   *
+   * When triangulating a arrangement face within a bounding box, curves outside the bounding box are projected on the
+   * four sides of the bbox. Topological errors could be introduced if several polylines are lying on the same side.
+   * Thus we add the midpoint in between the two points on boundary and move it outward with an increasing offset.
+   */
   void add_boundary_helper_point(Point from, Point to) {
+    // Arrangements on curved surfaces currently draws the entire parameter space, so there's no need to add
+    // helper points.
     if constexpr(Is_on_curved_surface) return;
     if(from == to) return;
     auto shared_side = shared_boundary(from, to);
@@ -126,8 +149,8 @@ private:
 
   void insert_all_vertices() {
     auto vertex_filter = [this](std::size_t idx) { return m_point_types[idx] != Constraint_only; };
-    auto index_to_point_with_info = [this](std::size_t idx) -> KPoint_with_info {
-      return std::make_pair(transform_point(m_points[idx]), idx);
+    auto index_to_point_with_info = [this](std::size_t idx) -> KPoint_with_index {
+      return std::make_pair(to_kernel_point(m_points[idx]), idx);
     };
     auto indexes_begin = boost::make_counting_iterator<std::size_t>(0);
     auto indexes_end = boost::make_counting_iterator<std::size_t>(m_points.size());
@@ -140,12 +163,12 @@ private:
     if constexpr(Is_on_curved_surface)
       m_ct.insert(transformed_begin, transformed_end);
     else
-      m_ct.template insert_with_info<KPoint_with_info>(transformed_begin, transformed_end);
+      m_ct.template insert_with_info<KPoint_with_index>(transformed_begin, transformed_end);
   }
 
   void insert_all_constraints() {
     auto constraint_filter = [this](std::size_t idx) { return m_point_types[idx] != Vertex_only; };
-    auto index_to_point = [this](std::size_t idx) -> KPoint { return transform_point(m_points[idx]); };
+    auto index_to_point = [this](std::size_t idx) -> KPoint { return to_kernel_point(m_points[idx]); };
     for(auto [start_idx, end_idx] : m_ccb_ranges) {
       auto indexes_begin = boost::make_counting_iterator<std::size_t>(start_idx);
       auto indexes_end = boost::make_counting_iterator<std::size_t>(end_idx);
@@ -189,8 +212,7 @@ public:
     if(m_points.empty()) return Triangle_soup();
     add_boundary_helper_point(m_points.back(), m_points.front());
     if constexpr(Is_on_curved_surface) {
-      auto it = m_ctx.m_face_points.find(m_fh);
-      if(it != m_ctx.m_face_points.end()) {
+      if(auto it = m_ctx.m_face_points.find(m_fh); it != m_ctx.m_face_points.end()) {
         m_points.insert(m_points.end(), it->second.begin(), it->second.end());
         m_point_types.insert(m_point_types.end(), it->second.size(), Vertex_only);
       }
@@ -208,18 +230,18 @@ public:
     boost::associative_property_map<decltype(in_domain_map)> in_domain(in_domain_map);
     CGAL::mark_domain_in_triangulation(m_ct, in_domain);
     // Collect triangles within the constrained domain.
-    Triangle_soup tf;
-    tf.triangles.reserve(m_ct.number_of_faces());
+    Triangle_soup ts;
+    ts.triangles.reserve(m_ct.number_of_faces());
     for(auto fit = m_ct.finite_faces_begin(); fit != m_ct.finite_faces_end(); ++fit) {
-      Point_index v1 = fit->vertex(0)->info();
-      Point_index v2 = fit->vertex(1)->info();
-      Point_index v3 = fit->vertex(2)->info();
+      Index v1 = fit->vertex(0)->info();
+      Index v2 = fit->vertex(1)->info();
+      Index v3 = fit->vertex(2)->info();
       if(!v1.is_valid() || !v2.is_valid() || !v3.is_valid()) continue;
       if(!get(in_domain, fit)) continue;
-      tf.triangles.push_back(Triangle{v1, v2, v3});
+      ts.triangles.push_back(Triangle{v1, v2, v3});
     }
-    tf.points = std::move(m_points);
-    return tf;
+    ts.points = std::move(m_points);
+    return ts;
   }
 
 private:

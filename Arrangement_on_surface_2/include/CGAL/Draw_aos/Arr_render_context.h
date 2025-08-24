@@ -65,12 +65,17 @@ class Arr_bounds_context_mixin
 {
   using Geom_traits = GeomTraits;
   using Approx_traits = Arr_approximate_traits<Geom_traits>;
-  using Point_geom = typename Approx_traits::Point;
+  using Point = typename Approx_traits::Point;
   using Approx_nt = typename Approx_traits::Approx_nt;
+  constexpr static double ep_base = std::numeric_limits<Approx_nt>::epsilon();
 
 protected:
   Arr_bounds_context_mixin(const Bbox_2& bbox)
-      : m_bbox(bbox) {}
+      : m_bbox(bbox)
+      , ep_xmin(std::max(std::abs(ep_base * bbox.xmin()), ep_base))
+      , ep_xmax(std::max(std::abs(ep_base * bbox.xmax()), ep_base))
+      , ep_ymin(std::max(std::abs(ep_base * bbox.ymin()), ep_base))
+      , ep_ymax(std::max(std::abs(ep_base * bbox.ymax()), ep_base)) {}
 
 public:
   double xmin() const { return m_bbox.xmin(); }
@@ -79,17 +84,19 @@ public:
   double ymax() const { return m_bbox.ymax(); }
   const Bbox_2& bbox() const { return m_bbox; }
 
-  bool contains_x(Approx_nt x) const { return xmin() <= x && x <= xmax(); }
-  bool contains_y(Approx_nt y) const { return ymin() <= y && y <= ymax(); }
-  bool contains(Point_geom pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
+  bool contains_x(Approx_nt x) const { return xmin() - ep_xmin <= x && x <= xmax() + ep_xmax; }
+  bool contains_y(Approx_nt y) const { return ymin() - ep_ymin <= y && y <= ymax() + ep_ymax; }
+  bool contains(Point pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
 
-  bool is_on_boundary(Point_geom pt) const {
-    return (pt.x() == xmin() || pt.x() == xmax()) && contains_y(pt.y()) ||
-           (pt.y() == ymin() || pt.y() == ymax()) && contains_x(pt.x());
-  }
+  bool is_on_left(Point pt) const { return std::abs(pt.x() - xmin()) < ep_xmin && contains_y(pt.y()); }
+  bool is_on_right(Point pt) const { return std::abs(pt.x() - xmax()) < ep_xmax && contains_y(pt.y()); }
+  bool is_on_bottom(Point pt) const { return std::abs(pt.y() - ymin()) < ep_ymin && contains_x(pt.x()); }
+  bool is_on_top(Point pt) const { return std::abs(pt.y() - ymax()) < ep_ymax && contains_x(pt.x()); }
+  bool is_on_boundary(Point pt) const { return is_on_left(pt) || is_on_right(pt) || is_on_bottom(pt) || is_on_top(pt); }
 
 private:
   const Bbox_2 m_bbox;
+  const Approx_nt ep_xmin, ep_xmax, ep_ymin, ep_ymax;
 };
 
 template <typename Arrangement>
