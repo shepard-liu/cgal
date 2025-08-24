@@ -16,7 +16,6 @@
 #ifndef ARR_VIEWER_H
 #define ARR_VIEWER_H
 
-#include <OpenGL/gltypes.h>
 #include <algorithm>
 #include <array>
 #include <cstddef>

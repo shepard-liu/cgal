@@ -746,7 +746,7 @@ template <typename Arrangement, typename GSOptions>
 void draw(const Arrangement& arr,
           const GSOptions& gso,
           const char* title = "2D Arrangement on Surface Viewer",
-          Bbox_2 initial_bbox = Bbox_2()) {
+          Bbox_2 initial_bbox = Bbox_2(0, 0, 0, 0)) {
   Qt::init_ogl_context(4, 3);
   int argc;
   QApplication app(argc, nullptr);
@@ -766,7 +766,7 @@ void draw(const Arrangement& arr,
 template <typename Arrangement>
 void draw(const Arrangement& arr,
           const char* title = "2D Arrangement on Surface Viewer",
-          Bbox_2 initial_bbox = Bbox_2()) {
+          Bbox_2 initial_bbox = Bbox_2(0, 0, 0, 0)) {
   using Face_const_handle = typename Arrangement::Face_const_handle;
   using Vertex_const_handle = typename Arrangement::Vertex_const_handle;
   using Halfedge_const_handle = typename Arrangement::Halfedge_const_handle;

@@ -1,11 +1,14 @@
-#include "CGAL/Arr_linear_traits_2.h"
-#include "CGAL/Random.h"
+#define CGAL_DRAW_AOS_DEBUG
+#define CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR "/home/shep/codes/aos_js_helper"
+#include <string>
+
+#include <CGAL/Random.h>
+#include <CGAL/Arr_linear_traits_2.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Arrangement_2.h>
 #include <CGAL/Arr_segment_traits_2.h>
 #include <CGAL/Arr_non_caching_segment_traits_2.h>
 #include <CGAL/draw_arrangement_2.h>
-#include <string>
 
 /*! Convert HSV to RGB color space
  * Converts a given set of HSV values `h', `s', `v' into RGB coordinates.
@@ -173,7 +176,7 @@ void draw_unbounded_linear_grid() {
   auto& traits = *arr.traits();
 
   // Insert a n*n grid
-  int n = 5;
+  int n = 1;
   for(int i = 0; i < n; ++i) {
     Point p1(i * 5, 0);
     Point p2(i * 5, 1);
@@ -235,9 +238,9 @@ void draw_random_segments(int n) {
 }
 
 int main() {
-  draw_rect();
-  draw_nested();
+  // draw_rect();
+  // draw_nested();
   draw_unbounded_linear_grid();
-  draw_random_segments(100);
+  // draw_random_segments(100);
   return EXIT_SUCCESS;
 }
