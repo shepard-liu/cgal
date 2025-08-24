@@ -1,7 +1,23 @@
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
+
 #ifndef CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_H
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_FACE_H
 
 #include <cstddef>
+#include <iterator>
 #include <optional>
 #include <utility>
 #include <algorithm>
@@ -10,7 +26,6 @@
 
 #include <CGAL/Arr_enums.h>
 #include <CGAL/Bbox_2.h>
-#include "CGAL/basic.h"
 #include <CGAL/Draw_aos/Arr_bounded_approximate_halfedge.h>
 #include <CGAL/Draw_aos/Arr_bounded_approximate_vertex.h>
 #include <CGAL/Draw_aos/Arr_bounded_face_triangulator.h>
@@ -53,12 +68,65 @@ class Arr_bounded_approximate_face
   {};
 
 private:
+  /*!
+   * \brief A stateful geometry simplifier that simplifies horizontal and vertical segments
+   *
+   * \tparam OutputIterator
+   */
+  template <typename OutputIterator>
+  class Colinear_simplifier
+  {
+  public:
+    Colinear_simplifier(OutputIterator out_it)
+        : m_out_it(out_it) {}
+
+    void dump() {
+      if(m_start.has_value()) {
+        *m_out_it++ = m_start.value();
+        m_start.reset();
+      }
+      if(m_mid.has_value()) {
+        *m_out_it++ = m_mid.value();
+        m_mid.reset();
+      }
+    }
+
+    void push_back(Point p) {
+      if(m_mid.has_value()) {
+        if(p.y() == m_mid->y() && p.y() == m_start->y() || p.x() == m_mid->x() && p.x() == m_start->x())
+          // Three points are collinear horizontally or vertically.
+          m_mid = p;
+        else {
+          *m_out_it++ = m_start.value();
+          m_start = m_mid;
+          m_mid = p;
+        }
+        return;
+      }
+
+      if(m_start.has_value())
+        m_mid = p;
+      else
+        m_start = p;
+    }
+
+    ~Colinear_simplifier() { dump(); }
+
+  private:
+    OutputIterator m_out_it;
+    std::optional<Point> m_start, m_mid;
+  };
+
   class Context : public Bounded_render_context
   {
+    using Simplifier = Colinear_simplifier<std::back_insert_iterator<Triangulator>>;
+
   public:
     Context(const Bounded_render_context& ctx, Triangulator& triangulator)
         : Bounded_render_context(ctx)
-        , m_triangulator(triangulator) {}
+        , m_triangulator(triangulator) {
+      if constexpr(!Is_on_curved_surface) m_simplifier.emplace(std::back_inserter(m_triangulator));
+    }
     // Let's not accidentally copy this object.
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
@@ -66,21 +134,32 @@ private:
     void insert(Point pt) {
       if(Approx_traits::is_null(pt) || pt == m_last_pt) return;
       pt = Point(pt.x(), std::clamp(pt.y(), this->ymin(), this->ymax()));
+      if constexpr(!Is_on_curved_surface) {
+        m_simplifier->push_back(pt);
+        return;
+      }
+      m_triangulator.push_back(pt);
       m_last_pt = pt;
-      m_triangulator.insert(pt);
     }
 
-    void start_ccb() { m_triangulator.start_ccb(); }
-    void end_ccb() { m_triangulator.end_ccb(); }
+    void start_ccb() { m_triangulator.start_constraint(); }
+
+    void end_ccb() {
+      if constexpr(!Is_on_curved_surface) m_simplifier->dump();
+      m_triangulator.end_constraint();
+    }
+
     const std::optional<Point>& last_pt() const { return m_last_pt; }
 
   private:
     Triangulator& m_triangulator;
+    // Colinear simplifier is only used for optimizing planar arrangements.
+    std::optional<Simplifier> m_simplifier;
     std::optional<Point> m_last_pt;
   };
 
 private:
-  static Arr_parameter_space side_of_fictitious_edge(const Halfedge_const_handle& he) {
+  static Arr_parameter_space side_of_fict_edge(const Halfedge_const_handle& he) {
     const auto& source = he->source();
     const auto& target = he->target();
     auto sx = source->parameter_space_in_x();
@@ -89,25 +168,17 @@ private:
     auto ty = target->parameter_space_in_y();
     if(sx == tx && sx != ARR_INTERIOR) return sx;
     if(sy == ty && sy != ARR_INTERIOR) return sy;
-    CGAL_assertion(false && "Unexpected parameter space for fictitious edge vertices.");
+    CGAL_assertion(false && "Unexpected parameter space for fictitious edge ends.");
     return ARR_INTERIOR;
   }
 
-  // Generate dummy segment(directed left to right) for the fictitious edge he.
-  static Polyline approximate_fictitious_edge(const Context& ctx, const Halfedge_const_handle& he) {
-    auto side = side_of_fictitious_edge(he);
+  // Generate dummy segment for fictitious edge he at its corresponding boundary.
+  static Polyline approximate_fict_edge(const Context& ctx, const Halfedge_const_handle& he) {
+    auto side = side_of_fict_edge(he);
     // There's no need to handle fictitious edges on left or right boundaries.
     if(side == ARR_LEFT_BOUNDARY || side == ARR_RIGHT_BOUNDARY) return Polyline{};
-    if(side == ARR_BOTTOM_BOUNDARY) {
-      Point from_pt(ctx.last_pt().has_value() ? ctx.last_pt()->x() : ctx.xmin(), ctx.ymin());
-      Point to_pt(ctx.xmax(), ctx.ymin());
-      return Polyline{from_pt, to_pt};
-    }
-    if(side == ARR_TOP_BOUNDARY) {
-      Point from_pt(ctx.xmin(), ctx.ymax());
-      Point to_pt(ctx.last_pt().has_value() ? ctx.last_pt()->x() : ctx.xmax(), ctx.ymax());
-      return Polyline{to_pt, from_pt};
-    }
+    if(side == ARR_BOTTOM_BOUNDARY) return Polyline{ctx.bottom_left(), ctx.bottom_right()};
+    if(side == ARR_TOP_BOUNDARY) return Polyline{ctx.top_right(), ctx.top_left()};
     CGAL_assertion(false && "Unexpected side for a fictitious edge.");
     return Polyline{};
   }
@@ -118,8 +189,7 @@ private:
   }
 
   void approximate_halfedge(Context& ctx, const Halfedge_const_handle& he) const {
-    const Polyline& polyline =
-        he->is_fictitious() ? approximate_fictitious_edge(ctx, he) : m_bounded_approx_halfedge(he);
+    const Polyline& polyline = he->is_fictitious() ? approximate_fict_edge(ctx, he) : m_bounded_approx_halfedge(he);
     for(const auto& curr_pt : polyline) ctx.insert(curr_pt);
   }
 

@@ -1,3 +1,18 @@
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
+
 #ifndef CGAL_DRAW_AOS_ARR_APPROXIMATION_CACHE_H
 #define CGAL_DRAW_AOS_ARR_APPROXIMATION_CACHE_H
 #include <cstddef>

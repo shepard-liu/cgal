@@ -1,3 +1,18 @@
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
+
 #ifndef CGAL_DRAW_AOS_ARR_RENDER_CONTEXT_H
 #define CGAL_DRAW_AOS_ARR_RENDER_CONTEXT_H
 #include <cstdlib>
@@ -11,7 +26,8 @@
 #include <CGAL/Arrangement_2.h>
 #include <CGAL/Draw_aos/Arr_approximation_cache.h>
 #include <CGAL/Draw_aos/type_utils.h>
-#include "CGAL/Draw_aos/Arr_face_point_generator.h"
+#include <CGAL/Draw_aos/Arr_face_point_generator.h>
+#include <CGAL/Draw_aos/Arr_coordinate_converter.h>
 
 #if defined(CGAL_DRAW_AOS_DEBUG)
 #include <fstream>
@@ -67,15 +83,10 @@ class Arr_bounds_context_mixin
   using Approx_traits = Arr_approximate_traits<Geom_traits>;
   using Point = typename Approx_traits::Point;
   using Approx_nt = typename Approx_traits::Approx_nt;
-  constexpr static double ep_base = std::numeric_limits<Approx_nt>::epsilon();
 
 protected:
   Arr_bounds_context_mixin(const Bbox_2& bbox)
-      : m_bbox(bbox)
-      , ep_xmin(std::max(std::abs(ep_base * bbox.xmin()), ep_base))
-      , ep_xmax(std::max(std::abs(ep_base * bbox.xmax()), ep_base))
-      , ep_ymin(std::max(std::abs(ep_base * bbox.ymin()), ep_base))
-      , ep_ymax(std::max(std::abs(ep_base * bbox.ymax()), ep_base)) {}
+      : m_bbox(bbox) {}
 
 public:
   double xmin() const { return m_bbox.xmin(); }
@@ -84,31 +95,41 @@ public:
   double ymax() const { return m_bbox.ymax(); }
   const Bbox_2& bbox() const { return m_bbox; }
 
-  bool contains_x(Approx_nt x) const { return xmin() - ep_xmin <= x && x <= xmax() + ep_xmax; }
-  bool contains_y(Approx_nt y) const { return ymin() - ep_ymin <= y && y <= ymax() + ep_ymax; }
+  bool contains_x(Approx_nt x) const { return xmin() <= x && x <= xmax(); }
+  bool contains_y(Approx_nt y) const { return ymin() <= y && y <= ymax(); }
   bool contains(Point pt) const { return contains_x(pt.x()) && contains_y(pt.y()); }
 
-  bool is_on_left(Point pt) const { return std::abs(pt.x() - xmin()) < ep_xmin && contains_y(pt.y()); }
-  bool is_on_right(Point pt) const { return std::abs(pt.x() - xmax()) < ep_xmax && contains_y(pt.y()); }
-  bool is_on_bottom(Point pt) const { return std::abs(pt.y() - ymin()) < ep_ymin && contains_x(pt.x()); }
-  bool is_on_top(Point pt) const { return std::abs(pt.y() - ymax()) < ep_ymax && contains_x(pt.x()); }
+  Point top_left() const { return Point(xmin(), ymax()); }
+  Point top_right() const { return Point(xmax(), ymax()); }
+  Point bottom_left() const { return Point(xmin(), ymin()); }
+  Point bottom_right() const { return Point(xmax(), ymin()); }
+
+  bool is_on_left(Point pt) const { return pt.x() == xmin() && contains_y(pt.y()); }
+  bool is_on_right(Point pt) const { return pt.x() == xmax() && contains_y(pt.y()); }
+  bool is_on_bottom(Point pt) const { return pt.y() == ymin() && contains_x(pt.x()); }
+  bool is_on_top(Point pt) const { return pt.y() == ymax() && contains_x(pt.x()); }
   bool is_on_boundary(Point pt) const { return is_on_left(pt) || is_on_right(pt) || is_on_bottom(pt) || is_on_top(pt); }
 
 private:
   const Bbox_2 m_bbox;
-  const Approx_nt ep_xmin, ep_xmax, ep_ymin, ep_ymax;
 };
 
+template <typename GeomTraits>
+using Arr_parameterization_context_mixin = Arr_coordinate_converter<GeomTraits>;
+
 template <typename Arrangement>
-class Arr_render_context : public Arr_cancellable_context_mixin
+class Arr_render_context : public Arr_cancellable_context_mixin,
+                           public Arr_parameterization_context_mixin<typename Arrangement::Geometry_traits_2>
 {
   using Cancellable_context_mixin = Arr_cancellable_context_mixin;
+  using Param_context_mixin = Arr_parameterization_context_mixin<typename Arrangement::Geometry_traits_2>;
   using Geom_traits = typename Arrangement::Geometry_traits_2;
   using Face_points_map = typename Arr_face_point_generator<Arrangement>::Face_points_map;
 
 public:
   Arr_render_context(const Arrangement& arr, double approx_error, Face_points_map& face_points)
       : Cancellable_context_mixin()
+      , Param_context_mixin(*arr.geometry_traits())
       , m_arr(arr)
       , m_traits(*arr.geometry_traits())
       , m_approx_error(approx_error)

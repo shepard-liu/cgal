@@ -43,8 +43,8 @@
 #include <CGAL/Draw_aos/type_utils.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
 #include <CGAL/Draw_aos/Arr_bounded_renderer.h>
+#include <CGAL/Draw_aos/Arr_coordinate_converter.h>
 #include <CGAL/Draw_aos/Arr_face_point_generator.h>
-#include <CGAL/Draw_aos/Arr_projector.h>
 
 namespace CGAL {
 namespace draw_aos {
@@ -204,7 +204,7 @@ protected:
   }
 
   Buffer_for_vao::Local_point to_local_point(Point pt) const {
-    auto approx_pt = Arr_projector(*m_arr.geometry_traits()).unproject(pt);
+    auto approx_pt = Arr_coordinate_converter(*m_arr.geometry_traits()).to_cartesian(pt);
     return Buffer_for_vao::Local_point(approx_pt.dx(), approx_pt.dy(), approx_pt.dz());
   }
 
@@ -292,15 +292,14 @@ private:
       // skip last two if ends with a sep point.
       int end_idx = Approx_traits::is_null(polyline.back()) ? polyline.size() - 2 : polyline.size();
       for(int i = start_idx; i < end_idx - 1; ++i) {
-        const auto& cur_pt = polyline[i];
-        const auto& next_pt = polyline[i + 1];
-        if(Approx_traits::is_null(cur_pt) || Approx_traits::is_null(next_pt)) continue;
-        auto mid_pt = CGAL::midpoint(cur_pt, next_pt);
-        if(!contains(bbox, mid_pt)) continue;
+        const auto& src = polyline[i];
+        const auto& tgt = polyline[i + 1];
+        if(Approx_traits::is_null(src) || Approx_traits::is_null(tgt)) continue;
+        if(!contains(bbox, src) || !contains(bbox, tgt)) continue;
         if(colored_edge)
-          m_gs.add_segment(this->to_local_point(cur_pt), this->to_local_point(next_pt), color);
+          m_gs.add_segment(this->to_local_point(src), this->to_local_point(tgt), color);
         else
-          m_gs.add_segment(this->to_local_point(cur_pt), this->to_local_point(next_pt));
+          m_gs.add_segment(this->to_local_point(src), this->to_local_point(tgt));
       }
     }
     // add vertices
@@ -332,7 +331,7 @@ public:
       , Helpers(arr)
       , m_gso(gso)
       , m_arr(arr)
-      , m_proj(*arr.geometry_traits()) {
+      , m_coords(*arr.geometry_traits()) {
     if(initial_bbox.x_span() == 0 || initial_bbox.y_span() == 0 || Is_on_curved_surface)
       m_initial_bbox = this->arr_bbox();
     else
@@ -372,7 +371,7 @@ private:
   const Arrangement& m_arr;
   bool m_initialized{false};
   Bbox_2 m_initial_bbox;
-  const Arr_projector<Geom_traits> m_proj;
+  const Arr_coordinate_converter<Geom_traits> m_coords;
   Render_params m_last_params;
 };
 

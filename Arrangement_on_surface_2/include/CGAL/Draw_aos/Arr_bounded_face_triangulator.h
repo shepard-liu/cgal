@@ -1,3 +1,18 @@
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
+
 #ifndef CGAL_DRAW_AOS_ARR_FACE_TRIANGULATOR_H
 #define CGAL_DRAW_AOS_ARR_FACE_TRIANGULATOR_H
 
@@ -91,8 +106,11 @@ class Arr_bounded_face_triangulator
   using KPoint_with_index = std::pair<KPoint, Index>;
   using Bounded_render_context = Arr_bounded_render_context<Arrangement>;
 
+public:
+  using value_type = Point;
+
 private:
-  static KPoint to_kernel_point(Point pt) { return KPoint(pt.x(), pt.y()); }
+  static KPoint to_kpoint(Point pt) { return KPoint(pt.x(), pt.y()); }
 
   /*!
    * \brief Offset a point on a specific boundary outward by a given offset.
@@ -141,16 +159,16 @@ private:
     if(from == to) return;
     auto shared_side = shared_boundary(from, to);
     if(shared_side == Boundary_side::None) return;
+    Point mid = CGAL::midpoint(from, to);
     m_offset += 0.1;
-    m_points.push_back(
-        offset_boundary_point(Point((from.x() + to.x()) / 2, (from.y() + to.y()) / 2), shared_side, m_offset));
+    m_points.push_back(offset_boundary_point(mid, shared_side, m_offset));
     m_point_types.push_back(Constraint_only);
   }
 
   void insert_all_vertices() {
     auto vertex_filter = [this](std::size_t idx) { return m_point_types[idx] != Constraint_only; };
     auto index_to_point_with_info = [this](std::size_t idx) -> KPoint_with_index {
-      return std::make_pair(to_kernel_point(m_points[idx]), idx);
+      return std::make_pair(to_kpoint(m_points[idx]), idx);
     };
     auto indexes_begin = boost::make_counting_iterator<std::size_t>(0);
     auto indexes_end = boost::make_counting_iterator<std::size_t>(m_points.size());
@@ -168,8 +186,8 @@ private:
 
   void insert_all_constraints() {
     auto constraint_filter = [this](std::size_t idx) { return m_point_types[idx] != Vertex_only; };
-    auto index_to_point = [this](std::size_t idx) -> KPoint { return to_kernel_point(m_points[idx]); };
-    for(auto [start_idx, end_idx] : m_ccb_ranges) {
+    auto index_to_point = [this](std::size_t idx) -> KPoint { return to_kpoint(m_points[idx]); };
+    for(auto [start_idx, end_idx] : m_cst_ranges) {
       auto indexes_begin = boost::make_counting_iterator<std::size_t>(start_idx);
       auto indexes_end = boost::make_counting_iterator<std::size_t>(end_idx);
       auto filtered_begin = boost::make_filter_iterator(constraint_filter, indexes_begin, indexes_end);
@@ -185,20 +203,20 @@ public:
       : m_ctx(ctx)
       , m_fh(fh) {}
 
-  void insert(Point pt) {
-    CGAL_assertion_msg(m_curr_ccb_start.has_value(), "Call start_ccb() before insert().");
+  void push_back(Point pt) {
+    CGAL_assertion_msg(m_curr_cst_start.has_value(), "Call start_constraint() before push_back().");
 
-    if(m_points.size() != 0) add_boundary_helper_point(m_points.back(), pt);
+    if(m_points.size() != *m_curr_cst_start) add_boundary_helper_point(m_points.back(), pt);
     m_points.push_back(pt);
     m_point_types.push_back(Vertex_and_constraint);
   }
 
-  void start_ccb() { m_curr_ccb_start = m_points.size(); }
+  void start_constraint() { m_curr_cst_start = m_points.size(); }
 
-  void end_ccb() {
-    CGAL_assertion_msg(m_curr_ccb_start.has_value(), "Call start_ccb() before end_ccb().");
-    m_ccb_ranges.emplace_back(*m_curr_ccb_start, m_points.size());
-    m_curr_ccb_start.reset();
+  void end_constraint() {
+    CGAL_assertion_msg(m_curr_cst_start.has_value(), "Call start_constraint() before end_constraint().");
+    m_cst_ranges.emplace_back(*m_curr_cst_start, m_points.size());
+    m_curr_cst_start.reset();
   }
 
   /*!
@@ -207,7 +225,7 @@ public:
    * \return Triangulated_face
    */
   operator Triangle_soup() && {
-    CGAL_assertion_msg(!m_curr_ccb_start.has_value(), "Call end_ccb() before conversion");
+    CGAL_assertion_msg(!m_curr_cst_start.has_value(), "Call end_constraint() before conversion");
 
     if(m_points.empty()) return Triangle_soup();
     add_boundary_helper_point(m_points.back(), m_points.front());
@@ -250,8 +268,8 @@ private:
   Ct m_ct;
   std::vector<Point> m_points;
   std::vector<Point_type> m_point_types;
-  std::vector<std::pair<std::size_t, std::size_t>> m_ccb_ranges;
-  std::optional<std::size_t> m_curr_ccb_start;
+  std::vector<std::pair<std::size_t, std::size_t>> m_cst_ranges;
+  std::optional<std::size_t> m_curr_cst_start;
   double m_offset{0};
 };
 
@@ -284,7 +302,7 @@ void debug_print(const Arr_bounded_face_triangulator<Arrangement>& triangulator)
   }
 
   int counter = 0;
-  for(auto [start_idx, end_idx] : triangulator.m_ccb_ranges) {
+  for(auto [start_idx, end_idx] : triangulator.m_cst_ranges) {
     auto filename = ccb_constraint_file_name_prefix + "_" + std::to_string(counter++) + ".txt";
     auto filepath = debug_dir / filename;
     ofs_index << filename << std::endl;

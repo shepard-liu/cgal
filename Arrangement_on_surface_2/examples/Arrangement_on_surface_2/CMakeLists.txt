@@ -29,6 +29,7 @@ if(CGAL_Qt6_FOUND)
   target_link_libraries(circular_arcs PRIVATE CGAL::CGAL_Basic_viewer)
   target_link_libraries(rational_functions PRIVATE CGAL::CGAL_Basic_viewer)
   target_link_libraries(spherical_insert PRIVATE CGAL::CGAL_Basic_viewer)
+  target_link_libraries(spherical_overlay PRIVATE CGAL::CGAL_Basic_viewer)
 else()
   message(
     STATUS

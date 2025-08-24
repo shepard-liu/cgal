@@ -1,5 +1,3 @@
-#define CGAL_DRAW_AOS_DEBUG
-#define CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR "/home/shep/codes/aos_js_helper"
 #include <string>
 
 #include <CGAL/Random.h>
@@ -176,7 +174,7 @@ void draw_unbounded_linear_grid() {
   auto& traits = *arr.traits();
 
   // Insert a n*n grid
-  int n = 1;
+  int n = 5;
   for(int i = 0; i < n; ++i) {
     Point p1(i * 5, 0);
     Point p2(i * 5, 1);
@@ -238,9 +236,9 @@ void draw_random_segments(int n) {
 }
 
 int main() {
-  // draw_rect();
-  // draw_nested();
+  draw_rect();
+  draw_nested();
   draw_unbounded_linear_grid();
-  // draw_random_segments(100);
+  draw_random_segments(100);
   return EXIT_SUCCESS;
 }

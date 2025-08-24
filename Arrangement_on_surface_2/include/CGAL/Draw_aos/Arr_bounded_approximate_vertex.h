@@ -1,10 +1,23 @@
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
 
 #ifndef CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_VERTEX_H
 #define CGAL_DRAW_AOS_ARR_BOUNDED_APPROXIMATE_VERTEX_H
 
 #include <CGAL/Draw_aos/type_utils.h>
 #include <CGAL/Draw_aos/Arr_render_context.h>
-#include "CGAL/Draw_aos/Arr_projector.h"
 
 namespace CGAL {
 namespace draw_aos {
@@ -35,7 +48,7 @@ public:
     auto [iter, inserted] = m_ctx.m_cache.vertices().try_emplace(vh);
     Point_geom& point = iter->second;
     if(!inserted) return point;
-    return point = Arr_projector(m_ctx.m_traits).project(m_ctx.m_traits.approximate_2_object()(vh->point()));
+    return point = m_ctx.to_uv(m_ctx.m_traits.approximate_2_object()(vh->point()));
   }
 
 private:

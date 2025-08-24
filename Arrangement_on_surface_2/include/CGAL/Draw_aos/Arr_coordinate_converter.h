@@ -1,5 +1,20 @@
-#ifndef CGAL_DRAW_AOS_ARR_PROJECTION_H
-#define CGAL_DRAW_AOS_ARR_PROJECTION_H
+// Copyright (c) 2025
+// Utrecht University (The Netherlands),
+// ETH Zurich (Switzerland),
+// INRIA Sophia-Antipolis (France),
+// Max-Planck-Institute Saarbruecken (Germany),
+// and Tel-Aviv University (Israel).  All rights reserved.
+//
+// This file is part of CGAL (www.cgal.org)
+//
+// $URL$
+// $Id$
+// SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Commercial
+//
+// Author(s): Shepard Liu	 <shepard0liu@gmail.com>
+
+#ifndef CGAL_DRAW_AOS_ARR_COORDINATE_CONVERTER_H
+#define CGAL_DRAW_AOS_ARR_COORDINATE_CONVERTER_H
 #include <cmath>
 
 #include <CGAL/number_type_config.h>
@@ -10,12 +25,12 @@ namespace CGAL {
 namespace draw_aos {
 
 /*!
- * \brief class handling projection between 2D parameter space and Euclidean space.
+ * \brief class handling coordinate conversion between 2D parameterized surface coordinates and cartesian coordinates.
  *
  * \tparam GeomTraits
  */
 template <typename GeomTraits>
-class Arr_projector
+class Arr_coordinate_converter
 {
   using Geom_traits = GeomTraits;
   using Approx_traits = Arr_approximate_traits<Geom_traits>;
@@ -23,30 +38,42 @@ class Arr_projector
   using Point = typename Approx_traits::Point;
 
 public:
-  Arr_projector(const GeomTraits& traits)
+  Arr_coordinate_converter(const GeomTraits& traits)
       : m_traits(traits) {}
 
-  Point project(Approx_point pt) const { return pt; }
+  /*!
+   * \brief Converts a point in cartesian coordinates to parameterized surface coordinates.
+   *
+   * \param pt
+   * \return Point
+   */
+  Point to_uv(Approx_point pt) const { return pt; }
 
-  Approx_point unproject(Point pt) const { return pt; }
+  /*!
+   * \brief Converts a point in parameterized surface coordinates to cartesian coordinates.
+   *
+   * \param pt
+   * \return Approx_point
+   */
+  Approx_point to_cartesian(Point pt) const { return pt; }
 
 private:
   const GeomTraits& m_traits;
 };
 
 /*!
- * \brief Projector specialization for geodesic arc on sphere traits.
+ * \brief Converter specialization for geodesic arc on sphere traits.
  *
- * The projection process is essentially a conversion between spherical coordinates and right-handed Cartesian
- * coordinates. Sphercial coordinates are represented as azimuth and polar angle. Note that the polar angle starts from
- * north pole.
+ * Provides conversions between spherical coordinates and right-handed Cartesian coordinates. Sphercial coordinates are
+ * represented as azimuth ( [0, 2 Pi) ) and polar ( [0, Pi] ) angle in radians. Points on the identification curve have
+ * azimuth == 0. The south pole has polar == 0.
  *
  * \tparam Kernel
  * \tparam atanX
  * \tparam atanY
  */
 template <typename Kernel, int atanX, int atanY>
-class Arr_projector<Arr_geodesic_arc_on_sphere_traits_2<Kernel, atanX, atanY>>
+class Arr_coordinate_converter<Arr_geodesic_arc_on_sphere_traits_2<Kernel, atanX, atanY>>
 {
   using Geom_traits = Arr_geodesic_arc_on_sphere_traits_2<Kernel>;
   using Approx_traits = Arr_approximate_traits<Geom_traits>;
@@ -55,10 +82,10 @@ class Arr_projector<Arr_geodesic_arc_on_sphere_traits_2<Kernel, atanX, atanY>>
   using Point = typename Approx_traits::Point;
 
 public:
-  Arr_projector(const Geom_traits& traits)
+  Arr_coordinate_converter(const Geom_traits& traits)
       : m_traits(traits) {}
 
-  Point project(Approx_point point) const {
+  Point to_uv(Approx_point point) const {
     if(point.location() == Approx_point::MAX_BOUNDARY_LOC) return Point(0, CGAL_PI);
     if(point.location() == Approx_point::MIN_BOUNDARY_LOC) return Point(0, 0);
     Approx_nt azimuth_from_id =
@@ -66,7 +93,7 @@ public:
     return Point(azimuth_from_id, std::acos(-point.dz()));
   }
 
-  Approx_point unproject(Point point) const {
+  Approx_point to_cartesian(Point point) const {
     using Direction_3 = typename Geom_traits::Approximate_kernel::Direction_3;
 
     Approx_nt polar = point.y();
