@@ -15,8 +15,10 @@
 
 // TODO #include <CGAL/license/GraphicsView.h>
 
+#include <array>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -64,16 +66,17 @@ public:
   typedef Local_kernel::Vector_3 Local_vector;
 
   Graphics_scene()
-      : m_buffer_for_points(&arrays[POS_POINTS], nullptr,
-                            &m_bounding_box, &arrays[COLOR_POINTS]),
-        m_buffer_for_segments(&arrays[POS_SEGMENTS], nullptr,
-                              &m_bounding_box, &arrays[COLOR_SEGMENTS]),
-        m_buffer_for_rays(&arrays[POS_RAYS], nullptr, &m_bounding_box,
-                          &arrays[COLOR_RAYS]),
-        m_buffer_for_lines(&arrays[POS_RAYS], nullptr,
-                           &m_bounding_box, &arrays[COLOR_LINES]),
-        m_buffer_for_faces(&arrays[POS_FACES], nullptr, &m_bounding_box, &arrays[COLOR_FACES],
-                           &arrays[FLAT_NORMAL_FACES], &arrays[SMOOTH_NORMAL_FACES]),
+      : arrays(std::make_unique<Buffer_arrays>()),
+        m_buffer_for_points(&(*arrays)[POS_POINTS], nullptr,
+                            &m_bounding_box, &(*arrays)[COLOR_POINTS]),
+        m_buffer_for_segments(&(*arrays)[POS_SEGMENTS], nullptr,
+                              &m_bounding_box, &(*arrays)[COLOR_SEGMENTS]),
+        m_buffer_for_rays(&(*arrays)[POS_RAYS], nullptr, &m_bounding_box,
+                          &(*arrays)[COLOR_RAYS]),
+        m_buffer_for_lines(&(*arrays)[POS_RAYS], nullptr,
+                           &m_bounding_box, &(*arrays)[COLOR_LINES]),
+        m_buffer_for_faces(&(*arrays)[POS_FACES], nullptr, &m_bounding_box, &(*arrays)[COLOR_FACES],
+                           &(*arrays)[FLAT_NORMAL_FACES], &(*arrays)[SMOOTH_NORMAL_FACES]),
         m_default_color_face(60, 60, 200),
         m_default_color_point(200, 60, 60),
         m_default_color_segment(0, 0, 0),
@@ -144,13 +147,13 @@ public:
   const CGAL::Bbox_3 &bounding_box() const { return m_bounding_box; }
 
   const std::vector<BufferType> &get_array_of_index(int index) const
-  { assert(index<LAST_INDEX); return arrays[index]; }
+  { assert(index<LAST_INDEX); return (*arrays)[index]; }
 
   int get_size_of_index(int index) const
-  { return static_cast<int>(arrays[index].size()*sizeof(BufferType)); }
+  { return static_cast<int>((*arrays)[index].size()*sizeof(BufferType)); }
 
   unsigned int number_of_elements(int index) const
-  { return static_cast<unsigned int>(arrays[index].size()/3); }
+  { return static_cast<unsigned int>((*arrays)[index].size()/3); }
 
   void initiate_bounding_box(const CGAL::Bbox_3& new_bounding_box)
   { m_bounding_box = new_bounding_box; }
@@ -390,7 +393,11 @@ public:
     LAST_INDEX = END_NORMAL
   };
 
+  using Buffer_arrays = std::array<std::vector<BufferType>, LAST_INDEX>;
+
 protected:
+  std::unique_ptr<Buffer_arrays> arrays;
+
   Buffer_for_vao m_buffer_for_points;
   Buffer_for_vao m_buffer_for_segments;
   Buffer_for_vao m_buffer_for_rays;
@@ -404,8 +411,6 @@ protected:
   CGAL::IO::Color m_default_color_line;
 
   std::vector<std::tuple<Local_point, std::string>> m_texts;
-
-  std::vector<BufferType> arrays[LAST_INDEX];
 
   CGAL::Bbox_3 m_bounding_box;
 };

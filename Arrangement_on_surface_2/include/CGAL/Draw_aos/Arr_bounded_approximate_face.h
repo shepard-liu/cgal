@@ -199,6 +199,7 @@ private:
     ctx.start_ccb();
     auto circ = start;
     do {
+      if(ctx.is_cancelled()) break;
       approximate_halfedge(ctx, circ);
       approximate_vertex(ctx, circ->target());
     } while(++circ != start);
@@ -222,7 +223,7 @@ public:
 
     auto [iter, inserted] = m_ctx.m_cache.faces().try_emplace(fh);
     Triangle_soup& ts = iter->second;
-    if(!inserted || m_ctx.is_cancelled()) return ts;
+    if(!inserted) return ts;
     auto triangulator = Triangulator(m_ctx, fh);
     auto ctx = Context(m_ctx, triangulator);
 

@@ -244,7 +244,7 @@ public:
     insert_all_constraints();
     if(m_ct.number_of_faces() == 0) return Triangle_soup();
 
-#if defined(CGAL_DRAW_AOS_DEBUG)
+#if defined(CGAL_DRAW_AOS_DEBUG) && defined(CGAL_DRAW_AOS_TRIANGULATOR_DEBUG_FILE_DIR)
     debug_print(*this);
 #endif
 

@@ -1,3 +1,4 @@
+// #define CGAL_DRAW_AOS_DEBUG
 #include <string>
 
 #include <CGAL/Random.h>
@@ -236,9 +237,22 @@ void draw_random_segments(int n) {
 }
 
 int main() {
-  draw_rect();
-  draw_nested();
-  draw_unbounded_linear_grid();
+  // draw_rect();
+  // draw_nested();
+  // draw_unbounded_linear_grid();
   draw_random_segments(100);
+  // CGAL::Graphics_scene scene1;
+  // CGAL::Graphics_scene scene2;
+  // using Point = CGAL::Exact_predicates_inexact_constructions_kernel::Point_3;
+  // scene1.face_begin();
+  // scene1.add_point_in_face(Point(0, 0, 0));
+  // scene1.add_point_in_face(Point(1, 0, 0));
+  // scene1.add_point_in_face(Point(0, 1, 0));
+  // scene1.face_end();
+  // std::cout << "Scene1 has " << scene1.number_of_elements(4) << " faces." << std::endl;
+  // std::cout << "Scene2 has " << scene2.number_of_elements(4) << " faces." << std::endl;
+  // std::swap(scene1, scene2);
+  // std::cout << "After move scene1 has " << scene1.number_of_elements(4) << " faces." << std::endl;
+  // std::cout << "After move scene2 has " << scene2.number_of_elements(4) << " faces." << std::endl;
   return EXIT_SUCCESS;
 }

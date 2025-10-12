@@ -56,17 +56,12 @@ protected:
 
 public:
   Time_point start_time() const { return m_start_time; }
-  Time_point end_time() const { return m_end_time; }
   Duration elapsed_time() const { return Clock::now() - m_start_time; }
-  bool is_cancelled() const { return m_cancelled->load(); }
-
-  void cancel() {
-    m_cancelled->store(true, std::memory_order_relaxed);
-    m_end_time = Clock::now();
-  }
+  bool is_cancelled() const { return m_cancelled->load(std::memory_order_relaxed); }
+  void cancel() { m_cancelled->store(true, std::memory_order_relaxed); }
 
 private:
-  Time_point m_start_time, m_end_time;
+  Time_point m_start_time;
   std::shared_ptr<std::atomic<bool>> m_cancelled;
 };
 
@@ -85,7 +80,7 @@ class Arr_bounds_context_mixin
   using Approx_nt = typename Approx_traits::Approx_nt;
 
 protected:
-  Arr_bounds_context_mixin(const Bbox_2& bbox)
+  explicit Arr_bounds_context_mixin(const Bbox_2& bbox)
       : m_bbox(bbox) {}
 
 public:
@@ -118,18 +113,15 @@ template <typename GeomTraits>
 using Arr_parameterization_context_mixin = Arr_coordinate_converter<GeomTraits>;
 
 template <typename Arrangement>
-class Arr_render_context : public Arr_cancellable_context_mixin,
-                           public Arr_parameterization_context_mixin<typename Arrangement::Geometry_traits_2>
+class Arr_render_context : public Arr_parameterization_context_mixin<typename Arrangement::Geometry_traits_2>
 {
-  using Cancellable_context_mixin = Arr_cancellable_context_mixin;
   using Param_context_mixin = Arr_parameterization_context_mixin<typename Arrangement::Geometry_traits_2>;
   using Geom_traits = typename Arrangement::Geometry_traits_2;
   using Face_points_map = typename Arr_face_point_generator<Arrangement>::Face_points_map;
 
 public:
   Arr_render_context(const Arrangement& arr, double approx_error, Face_points_map& face_points)
-      : Cancellable_context_mixin()
-      , Param_context_mixin(*arr.geometry_traits())
+      : Param_context_mixin(*arr.geometry_traits())
       , m_arr(arr)
       , m_traits(*arr.geometry_traits())
       , m_approx_error(approx_error)
@@ -153,18 +145,31 @@ public:
 };
 
 template <typename Arrangement>
-class Arr_bounded_render_context : public Arr_render_context<Arrangement>,
+class Arr_cancellable_render_context : public Arr_render_context<Arrangement>, public Arr_cancellable_context_mixin
+{
+  using Render_context = Arr_render_context<Arrangement>;
+  using Cancellable_context_mixin = Arr_cancellable_context_mixin;
+  using Approx_cache = Arr_approximation_cache<Arrangement>;
+
+public:
+  explicit Arr_cancellable_render_context(const Render_context& ctx)
+      : Render_context(ctx)
+      , Cancellable_context_mixin() {}
+};
+
+template <typename Arrangement>
+class Arr_bounded_render_context : public Arr_cancellable_render_context<Arrangement>,
                                    public Arr_bounds_context_mixin<typename Arrangement::Geometry_traits_2>
 {
   using Geom_traits = typename Arrangement::Geometry_traits_2;
   using Approx_point = typename Geom_traits::Approximate_point_2;
-  using Render_context = Arr_render_context<Arrangement>;
+  using Cancellable_render_context = Arr_cancellable_render_context<Arrangement>;
   using Bounds_context_mixin = Arr_bounds_context_mixin<Geom_traits>;
   using Approx_cache = Arr_approximation_cache<Arrangement>;
 
 public:
-  Arr_bounded_render_context(const Render_context& ctx, const Bbox_2& bbox, Approx_cache& cache)
-      : Render_context(ctx)
+  Arr_bounded_render_context(const Cancellable_render_context& ctx, const Bbox_2& bbox, Approx_cache& cache)
+      : Cancellable_render_context(ctx)
       , Bounds_context_mixin(bbox)
       , m_cache(cache) {}
 

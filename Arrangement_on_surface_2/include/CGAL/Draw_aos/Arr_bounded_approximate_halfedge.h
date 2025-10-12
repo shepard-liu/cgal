@@ -315,7 +315,6 @@ public:
     auto [iter, inserted] = cache.try_emplace(he, Polyline());
     Polyline& polyline = iter->second;
     if(!inserted) return polyline;
-    if(m_ctx.is_cancelled()) return polyline;
 
     const X_monotone_curve_2& curve = he->curve();
     Context ctx(m_ctx, curve, polyline);

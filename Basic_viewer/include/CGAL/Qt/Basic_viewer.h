@@ -105,6 +105,8 @@ public:
     m_prev_scene_empty(true),
     m_default_color_normal(220, 60, 20),
     m_ambient_color(0.6f, 0.5f, 0.5f, 0.5f),
+    m_diffuse_color(0.9f, 0.9f, 0.9f, 0.9f),
+    m_specular_color(0.0f, 0.0f, 0.0f, 1.0f),
     m_are_buffers_initialized(false)
   {
     // Define 'Control+Q' as the new exit shortcut (default was 'Escape')
@@ -1276,17 +1278,7 @@ protected:
     {
       mvMatrix.data()[i] = (float)mat[i];
     }
-    // define material
-    QVector4D diffuse( 0.9f,
-                       0.9f,
-                       0.9f,
-                       0.9f );
-
-    QVector4D specular( 0.0f,
-                        0.0f,
-                        0.0f,
-                        1.0f );
-
+    
     CGAL::Bbox_3 bb;
     if (bb==m_scene.bounding_box()) // Case of "empty" bounding box
     {
@@ -1312,8 +1304,8 @@ protected:
     lightLocation[4] = rendering_program_face.uniformLocation("u_SpecPower");
 
     rendering_program_face.setUniformValue(lightLocation[0], position);
-    rendering_program_face.setUniformValue(lightLocation[1], diffuse);
-    rendering_program_face.setUniformValue(lightLocation[2], specular);
+    rendering_program_face.setUniformValue(lightLocation[1], m_diffuse_color);
+    rendering_program_face.setUniformValue(lightLocation[2], m_specular_color);
     rendering_program_face.setUniformValue(lightLocation[3], m_ambient_color);
     rendering_program_face.setUniformValue(lightLocation[4], shininess);
     rendering_program_face.setUniformValue(mvpLocation, mvpMatrix);
@@ -1484,8 +1476,8 @@ protected:
                           (Local_point(bbox.xmin(), bbox.ymin(), bbox.zmin()),
                            Local_point(bbox.xmax(), bbox.ymax(), bbox.zmax())));
       // std::cout<<"Length of the diagonal: "<<d<<std::endl;
-      m_size_vertices=1.5*d;
-      m_size_edges=d;
+      m_size_vertices=1.5;
+      m_size_edges=1.0;
       m_size_rays=m_size_edges;
       m_size_lines=m_size_edges;
       m_size_normals=d/3;
@@ -1901,6 +1893,8 @@ protected:
 
   CGAL::IO::Color m_default_color_normal;
   QVector4D m_ambient_color;
+  QVector4D m_diffuse_color;
+  QVector4D m_specular_color;
 
   bool m_are_buffers_initialized;
 

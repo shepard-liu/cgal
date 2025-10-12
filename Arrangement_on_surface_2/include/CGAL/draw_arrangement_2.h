@@ -748,6 +748,10 @@ void draw(const Arrangement& arr,
           const GSOptions& gso,
           const char* title = "2D Arrangement on Surface Viewer",
           Bbox_2 initial_bbox = Bbox_2(0, 0, 0, 0)) {
+  QSurfaceFormat format;
+  format.setSamples(4);
+  QSurfaceFormat::setDefaultFormat(format);
+
   Qt::init_ogl_context(4, 3);
   int argc;
   QApplication app(argc, nullptr);

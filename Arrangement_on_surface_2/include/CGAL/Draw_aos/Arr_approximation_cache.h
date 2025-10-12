@@ -20,6 +20,7 @@
 #include <CGAL/Arr_enums.h>
 #include <CGAL/unordered_flat_map.h>
 #include <CGAL/Draw_aos/type_utils.h>
+#include "CGAL/Bbox_2.h"
 
 namespace CGAL {
 namespace draw_aos {
@@ -49,11 +50,13 @@ class Arr_approximation_cache
   using Face_cache = unordered_flat_map<Face_const_handle, Face_cache_obj>;
 
 public:
-  Arr_approximation_cache() = default;
+  Arr_approximation_cache(Bbox_2 bbox)
+      : m_bbox(bbox) {}
 
   const Vertex_cache& vertices() const { return m_vertices; }
   const Halfedge_cache& halfedges() const { return m_halfedges; }
   const Face_cache& faces() const { return m_faces; }
+  const Bbox_2& bbox() const { return m_bbox; }
 
   Vertex_cache& vertices() { return m_vertices; }
   Halfedge_cache& halfedges() { return m_halfedges; }
@@ -63,6 +66,7 @@ private:
   Vertex_cache m_vertices;
   Halfedge_cache m_halfedges;
   Face_cache m_faces;
+  Bbox_2 m_bbox;
 };
 
 } // namespace draw_aos
