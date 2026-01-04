@@ -27,7 +27,7 @@
 #include <CGAL/basic.h>
 #include <CGAL/Arr_enums.h>
 #include <CGAL/Arr_tags.h>
-#include "CGAL/Arr_has.h"
+#include <CGAL/Arr_has.h>
 
 namespace CGAL {
 namespace aos2 {
@@ -567,7 +567,7 @@ public:
 };
 
 template <typename BaseTraits, typename Derived, typename = void>
-class Tracing_approximate_point_2 {
+class Tracing_approximate_2_point {
   using Base = BaseTraits;
 
 protected:
@@ -583,7 +583,7 @@ protected:
 };
 
 template <typename BaseTraits, typename Derived>
-class Tracing_approximate_point_2<BaseTraits,
+class Tracing_approximate_2_point<BaseTraits,
                                   Derived,
                                   std::enable_if_t<has_approximate_2_point<BaseTraits>::value>> {
   using Base = BaseTraits;
@@ -613,7 +613,7 @@ protected:
 };
 
 template <typename BaseTraits, typename Derived, typename = void>
-class Tracing_approximate_xcv_2 {
+class Tracing_approximate_2_xcv {
   using Base = BaseTraits;
 
 protected:
@@ -629,7 +629,7 @@ protected:
 };
 
 template <typename BaseTraits, typename Derived>
-class Tracing_approximate_xcv_2<BaseTraits,
+class Tracing_approximate_2_xcv<BaseTraits,
                                 Derived,
                                 std::enable_if_t<has_approximate_2_xcv<BaseTraits>::value>> {
   using Base = BaseTraits;
@@ -668,7 +668,7 @@ protected:
 };
 
 template <typename BaseTraits, typename Derived, typename = void>
-class Tracing_approximate_xcv_2_within_bounds {
+class Tracing_approximate_2_xcv_bounds {
   using Base = BaseTraits;
 
 protected:
@@ -684,7 +684,7 @@ protected:
 };
 
 template <typename BaseTraits, typename Derived>
-class Tracing_approximate_xcv_2_within_bounds
+class Tracing_approximate_2_xcv_bounds
 <BaseTraits,
  Derived,
  std::enable_if_t<has_approximate_2_xcv_bounds<BaseTraits>::value>> {
@@ -729,20 +729,20 @@ template <typename BaseTraits, typename Derived>
 class Tracing_approximate_2<BaseTraits,
                             Derived,
                             std::enable_if_t<has_approximate_2<BaseTraits>::value>> :
-    public Tracing_approximate_point_2<BaseTraits, Derived>,
-    public Tracing_approximate_xcv_2<BaseTraits, Derived>,
-    public Tracing_approximate_xcv_2_within_bounds<BaseTraits, Derived>{
+    public Tracing_approximate_2_point<BaseTraits, Derived>,
+    public Tracing_approximate_2_xcv<BaseTraits, Derived>,
+    public Tracing_approximate_2_xcv_bounds<BaseTraits, Derived>{
   using Base = BaseTraits;
 
 public:
   class Approximate_2; // forward declaration
 
 private:
-  using Tracing_approx_point = typename Tracing_approximate_point_2<Base, Derived>::template
+  using Tracing_approx_point = typename Tracing_approximate_2_point<Base, Derived>::template
                                  Approximate_2<Approximate_2>;
-  using Tracing_approx_xcv = typename Tracing_approximate_xcv_2<Base, Derived>::template
+  using Tracing_approx_xcv = typename Tracing_approximate_2_xcv<Base, Derived>::template
                                Approximate_2<Approximate_2>;
-  using Tracing_approx_xcv_within_bounds = typename Tracing_approximate_xcv_2_within_bounds<Base, Derived>::template
+  using Tracing_approx_xcv_within_bounds = typename Tracing_approximate_2_xcv_bounds<Base, Derived>::template
                                              Approximate_2<Approximate_2>;
 
 public:
@@ -753,11 +753,11 @@ public:
                         public Tracing_approx_xcv_within_bounds {
     using Point_2 = typename Base::Point_2;
 
-  public:
     friend Tracing_approx_point;
     friend Tracing_approx_xcv;
     friend Tracing_approx_xcv_within_bounds;
 
+  public:
     using Tracing_approx_point::operator();
     using Tracing_approx_xcv::operator();
     using Tracing_approx_xcv_within_bounds::operator();

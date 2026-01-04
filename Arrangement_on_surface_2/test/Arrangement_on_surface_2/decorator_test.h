@@ -97,7 +97,6 @@ void test_type_consistency() {
                                                                                                                        \
   using alias = typename conditional_snifae_type_##namespace##_##identifier<namespace>::type;
 
-
 template <typename T>
 struct Decorating_traits_test_objects {
 protected:
@@ -107,15 +106,15 @@ protected:
 
 public:
   T traits;
-  Point_2 xcv_seg_pt;                                   // a point in the interior of xcv_seg
-  X_monotone_curve_2 xcv_seg;                           // x-monotone curve segment
-  X_monotone_curve_2 xcv_bt;                            // x-monotone curve approaching bottom/top boundaries (if exists)
-  CGAL::Arr_curve_end xcv_bt_end{CGAL::ARR_MIN_END};    // the certain end of xcv_bt that crosses/touches the bottom/top boundary
-  X_monotone_curve_2 xcv_lr;                            // x-monotone curve approaching left/right boundaries (if exists)
-  CGAL::Arr_curve_end xcv_lr_end{CGAL::ARR_MIN_END};    // the certain end of xcv_lr that crosses/touches the left/right boundary
-  Curve_2 cv;                                           // any curve
-  Point_2 pt_lr;                                        // a point on the left/right boundary (if exists)
-  Point_2 pt_bt;                                        // a point on the bottom/top boundary (if exists)
+  Point_2 xcv_seg_pt;                       // a point in the interior of xcv_seg
+  X_monotone_curve_2 xcv_seg;               // x-monotone curve segment
+  X_monotone_curve_2 xcv_bt;                // x-monotone curve approaching bottom/top boundaries (if exists)
+  Arr_curve_end xcv_bt_end{ARR_MIN_END};    // the certain end of xcv_bt that crosses/touches the bottom/top boundary
+  X_monotone_curve_2 xcv_lr;                // x-monotone curve approaching left/right boundaries (if exists)
+  Arr_curve_end xcv_lr_end{ARR_MIN_END};    // the certain end of xcv_lr that crosses/touches the left/right boundary
+  Curve_2 cv;                               // any curve
+  Point_2 pt_lr;                            // a point on the left/right boundary (if exists)
+  Point_2 pt_bt;                            // a point on the bottom/top boundary (if exists)
 };
 
 struct Algebraic_traits_decorating_test_types {

@@ -121,6 +121,15 @@ struct has_split_2 : std::false_type {};
 template <typename T>
 struct has_split_2<T, std::void_t<typename T::Split_2>> : std::true_type {};
 
+// Trim_2
+// Helper trait to check for the presence of nested Trim_2
+template <typename, typename = std::void_t<>>
+struct has_trim_2 : std::false_type {};
+
+// Specialization if the nested type Trim_2 exists
+template <typename T>
+struct has_trim_2<T, std::void_t<typename T::Trim_2>> : std::true_type {};
+
 // Intersect_2
 // Helper trait to check for the presence of nested Intersect_2
 template <typename, typename = std::void_t<>>
@@ -165,6 +174,15 @@ struct has_construct_point_2 : std::false_type {};
 // Specialization if the nested type Construct_point_2 exists
 template <typename T>
 struct has_construct_point_2<T, std::void_t<typename T::Construct_point_2>> : std::true_type {};
+
+// Construct_x_monotone_curve_2
+// Helper trait to check for the presence of nested Construct_x_monotone_curve_2
+template <typename, typename = std::void_t<>>
+struct has_construct_x_monotone_curve_2 : std::false_type {};
+
+// Specialization if the nested type Construct_x_monotone_curve_2 exists
+template <typename T>
+struct has_construct_x_monotone_curve_2<T, std::void_t<typename T::Construct_x_monotone_curve_2>> : std::true_type {};
 
 // Compare_endpoints_xy_2
 // Helper trait to check for the presence of nested Compare_endpoints_xy_2

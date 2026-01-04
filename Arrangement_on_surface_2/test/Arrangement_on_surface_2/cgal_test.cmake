@@ -1489,6 +1489,7 @@ compile_and_run(test_polycurve_intersection)
 
 compile_and_run(test_tracing_traits)
 compile_and_run(test_counting_traits)
+compile_and_run(test_polycurve_traits)
 
 # remove these before committing:
 set_target_properties(
@@ -1499,6 +1500,12 @@ set_target_properties(
 )
 set_target_properties(
   test_counting_traits
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_EXTENSIONS OFF
+)
+set_target_properties(
+  test_polycurve_traits
   PROPERTIES
   CXX_STANDARD 17
   CXX_EXTENSIONS OFF
