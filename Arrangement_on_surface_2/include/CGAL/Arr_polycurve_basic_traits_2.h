@@ -42,10 +42,10 @@ namespace aos2 {
 namespace internal {
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_parameter_space_in_x_2 {};
+class Polycurve_parameter_space_in_x_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_parameter_space_in_x_2
+class Polycurve_parameter_space_in_x_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_parameter_space_in_x_2<SubcurveTraits_2>::value>> {
@@ -56,7 +56,7 @@ public:
    * entity along the \f$x\f$-axis
    */
   class Parameter_space_in_x_2 {
-    friend class Polycurve_basic_parameter_space_in_x_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_parameter_space_in_x_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using Point_2 = typename Derived::Point_2;
@@ -110,14 +110,14 @@ public:
 
   /*! obtains a Parameter_space_in_x_2 function object */
   Parameter_space_in_x_2 parameter_space_in_x_2_object() const
-  { return Parameter_space_in_x_2(*static_cast<const Derived*>(this)); }
+  { return Parameter_space_in_x_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_parameter_space_in_y_2 {};
+class Polycurve_parameter_space_in_y_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_parameter_space_in_y_2
+class Polycurve_parameter_space_in_y_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_parameter_space_in_y_2<SubcurveTraits_2>::value>> {
@@ -128,7 +128,7 @@ public:
    * entity along the \f$y\f$-axis
    */
   class Parameter_space_in_y_2 {
-    friend class Polycurve_basic_parameter_space_in_y_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_parameter_space_in_y_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using Point_2 = typename Derived::Point_2;
@@ -183,14 +183,14 @@ public:
 
   /*! obtains a Parameter_space_in_y_2 function object */
   Parameter_space_in_y_2 parameter_space_in_y_2_object() const
-  { return Parameter_space_in_y_2(*static_cast<const Derived*>(this)); }
+  { return Parameter_space_in_y_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_compare_endpoints_xy_2 {};
+class Polycurve_compare_endpoints_xy_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_compare_endpoints_xy_2
+class Polycurve_compare_endpoints_xy_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_compare_endpoints_xy_2<SubcurveTraits_2>::value>> {
@@ -199,7 +199,7 @@ class Polycurve_basic_compare_endpoints_xy_2
 public:
   /*! A functor that lexicographically compares the endpoints of a curve. */
   class Compare_endpoints_xy_2 {
-    friend class Polycurve_basic_compare_endpoints_xy_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_compare_endpoints_xy_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
 
@@ -224,14 +224,14 @@ public:
   };
   
   Compare_endpoints_xy_2 compare_endpoints_xy_2_object() const
-  { return Compare_endpoints_xy_2(*static_cast<const Derived*>(this)); }
+  { return Compare_endpoints_xy_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_construct_opposite_2 {};
+class Polycurve_construct_opposite_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_construct_opposite_2
+class Polycurve_construct_opposite_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_construct_opposite_2<SubcurveTraits_2>::value>> {
@@ -242,7 +242,7 @@ public:
    * of a given curve, but directed in the opposite direction.
    */
   class Construct_opposite_2 {
-    friend class Polycurve_basic_construct_opposite_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_construct_opposite_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
@@ -251,7 +251,7 @@ public:
     const Derived& m_poly_traits;
   
     /*! constructs. */
-    Construct_opposite_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Construct_opposite_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! constructs the reversed \f$x\f$-monotone polycurve of the input.
@@ -274,14 +274,14 @@ public:
   };
 
   Construct_opposite_2 construct_opposite_2_object() const
-  { return Construct_opposite_2(*this); }
+  { return Construct_opposite_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_construct_point_2 {};
+class Polycurve_construct_point_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_construct_point_2
+class Polycurve_construct_point_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_construct_point_2<SubcurveTraits_2>::value>> {
@@ -290,7 +290,7 @@ class Polycurve_basic_construct_point_2
 public:
   //! A functor that constructs a point.
   class Construct_point_2 {
-    friend class Polycurve_basic_construct_point_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_construct_point_2<Subcurve_traits_2, Derived>;
 
     using Point_2 = typename Derived::Point_2;
 
@@ -298,7 +298,7 @@ public:
     const Derived& m_poly_traits;
   
     /*! constructs. */
-    Construct_point_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Construct_point_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! constructs a point.
@@ -314,23 +314,25 @@ public:
 
   /*! obtains a Construct_x_monotone_curve_2 functor object. */
   Construct_point_2 construct_point_2_object() const
-  { return Construct_point_2(*static_cast<const Derived*>(this)); }
+  { return Construct_point_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_construct_x_monotone_curve_2 {};
+class Polycurve_construct_x_monotone_curve_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_construct_x_monotone_curve_2
+class Polycurve_construct_x_monotone_curve_2
 <SubcurveTraits_2,
  Derived,
- std::enable_if_t<has_construct_x_monotone_curve_2<SubcurveTraits_2>::value>> {
+ // A special case for Polycurve Construct_x_monotone_curve_2 as it does not depend on
+ // the SubcurveTraits_2 having a Construct_x_monotone_curve_2 functor.
+ std::enable_if_t<true>> {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
 public:
   //! A functor that constructs an \f$x\f$-monotone curve.
   class Construct_x_monotone_curve_2 {
-    friend class Polycurve_basic_construct_x_monotone_curve_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_construct_x_monotone_curve_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
@@ -340,7 +342,7 @@ public:
     const Derived& m_poly_traits;
     
     /*! constructs. */
-    Construct_x_monotone_curve_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Construct_x_monotone_curve_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! obtains an \f$x\f$-monotone polycurve that consists of one given
@@ -498,15 +500,15 @@ public:
 
   /*! obtains a Construct_x_monotone_curve_2 functor object. */
   Construct_x_monotone_curve_2 construct_x_monotone_curve_2_object() const
-  { return Construct_x_monotone_curve_2(*static_cast<const Derived*>(this)); }
+  { return Construct_x_monotone_curve_2(static_cast<const Derived&>(*this)); }
 
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_compare_x_on_boundary_2 {};
+class Polycurve_compare_x_on_boundary_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_compare_x_on_boundary_2
+class Polycurve_compare_x_on_boundary_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_compare_x_on_boundary_2<SubcurveTraits_2>::value>> {
@@ -517,7 +519,7 @@ public:
    * the boundary of the parameter space.
    */
   class Compare_x_on_boundary_2 {
-    friend class Polycurve_basic_compare_x_on_boundary_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_compare_x_on_boundary_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using Point_2 = typename Derived::Point_2;
@@ -677,14 +679,14 @@ public:
 
   /*! obtains a Compare_x_on_boundary_2 function object. */
   Compare_x_on_boundary_2 compare_x_on_boundary_2_object() const
-  { return Compare_x_on_boundary_2(*static_cast<const Derived*>(this)); }
+  { return Compare_x_on_boundary_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_compare_x_near_boundary_2 {};
+class Polycurve_compare_x_near_boundary_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_compare_x_near_boundary_2
+class Polycurve_compare_x_near_boundary_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_compare_x_near_boundary_2<SubcurveTraits_2>::value>> {
@@ -695,7 +697,7 @@ public:
    * boundary of the parameter space.
    */
   class Compare_x_near_boundary_2 {
-    friend class Polycurve_basic_compare_x_near_boundary_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_compare_x_near_boundary_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using size_type = typename Derived::size_type;
@@ -704,7 +706,7 @@ public:
     const Derived& m_poly_traits;
     
     /*! constructs. */
-    Compare_x_near_boundary_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Compare_x_near_boundary_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     size_type get_curve_index(const X_monotone_curve_2& xcv,
@@ -728,10 +730,10 @@ public:
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_compare_y_on_boundary_2 {};
+class Polycurve_compare_y_on_boundary_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_compare_y_on_boundary_2
+class Polycurve_compare_y_on_boundary_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_compare_y_on_boundary_2<SubcurveTraits_2>::value>> {
@@ -742,7 +744,7 @@ public:
    * that lie on the vertical identification curve.
    */
   class Compare_y_on_boundary_2 {
-    friend class Polycurve_basic_compare_y_on_boundary_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_compare_y_on_boundary_2<Subcurve_traits_2, Derived>;
 
     using Point_2 = typename Derived::Point_2;
 
@@ -750,7 +752,7 @@ public:
     const Derived& m_poly_traits;
     
     /*! constructs. */
-    Compare_y_on_boundary_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Compare_y_on_boundary_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! compares the \f$y\f$-coordinate of two given points that lie on the
@@ -769,14 +771,14 @@ public:
 
   /*! obtains a Compare_y_on_boundary_2 function object */
   Compare_y_on_boundary_2 compare_y_on_boundary_2_object() const
-  { return Compare_y_on_boundary_2(*static_cast<const Derived*>(this)); }
+  { return Compare_y_on_boundary_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_compare_y_near_boundary_2 {};
+class Polycurve_compare_y_near_boundary_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_compare_y_near_boundary_2
+class Polycurve_compare_y_near_boundary_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_compare_y_near_boundary_2<SubcurveTraits_2>::value>> {
@@ -788,7 +790,7 @@ public:
    * boundary of the parameter space.
    */
   class Compare_y_near_boundary_2 {
-    friend class Polycurve_basic_compare_y_near_boundary_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_compare_y_near_boundary_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
@@ -797,7 +799,7 @@ public:
     const Derived& m_poly_traits;
     
     /*! constructs. */
-    Compare_y_near_boundary_2(const Subcurve_traits_2& traits) : m_poly_traits(traits) {}
+    Compare_y_near_boundary_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! compares the \f$y\f$-coordinates of 2 curves at their ends near the
@@ -834,14 +836,14 @@ public:
 
   /*! obtains a Compare_y_near_boundary_2 function object */
   Compare_y_near_boundary_2 compare_y_near_boundary_2_object() const
-  { return Compare_y_near_boundary_2(*static_cast<const Derived*>(this)); }
+  { return Compare_y_near_boundary_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_is_on_y_identification_2 {};
+class Polycurve_is_on_y_identification_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_is_on_y_identification_2
+class Polycurve_is_on_y_identification_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_is_on_y_identification_2<SubcurveTraits_2>::value>> {
@@ -852,7 +854,7 @@ public:
    * vertical identification curve.
    */
   class Is_on_y_identification_2 {
-    friend class Polycurve_basic_is_on_y_identification_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_is_on_y_identification_2<Subcurve_traits_2, Derived>;
 
     using Point_2 = typename Derived::Point_2;
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
@@ -890,10 +892,10 @@ public:
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_is_on_x_identification_2 {};
+class Polycurve_is_on_x_identification_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_is_on_x_identification_2
+class Polycurve_is_on_x_identification_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_is_on_x_identification_2<SubcurveTraits_2>::value>> {
@@ -904,7 +906,7 @@ public:
    * horizontal identification curve.
    */
   class Is_on_x_identification_2 {
-    friend class Polycurve_basic_is_on_x_identification_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_is_on_x_identification_2<Subcurve_traits_2, Derived>;
 
     using Point_2 = typename Derived::Point_2;
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
@@ -940,14 +942,14 @@ public:
 
   /*! obtains a Is_on_x_identification_2 function object */
   Is_on_x_identification_2 is_on_x_identification_2_object() const
-  { return Is_on_x_identification_2(*static_cast<const Derived*>(this)); }
+  { return Is_on_x_identification_2(static_cast<const Derived&>(*this)); }
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_trim_2 {};
+class Polycurve_trim_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_trim_2
+class Polycurve_trim_2
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_trim_2<SubcurveTraits_2>::value>> {
@@ -956,7 +958,7 @@ class Polycurve_basic_trim_2
 public:
   //! A functor that trimps an \f$x\f$-monotone curve.
   class Trim_2 {
-    friend class Polycurve_basic_trim_2<Subcurve_traits_2, Derived>;
+    friend class Polycurve_trim_2<Subcurve_traits_2, Derived>;
 
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
     using Point_2 = typename Derived::Point_2;
@@ -1070,7 +1072,7 @@ public:
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_approximate_2_point {
+class Polycurve_approximate_2_point {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
 protected:
@@ -1086,7 +1088,7 @@ protected:
 };
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_approximate_2_point
+class Polycurve_approximate_2_point
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_approximate_2_point<SubcurveTraits_2>::value>> {
@@ -1095,28 +1097,23 @@ class Polycurve_basic_approximate_2_point
 public:
   using Approximate_point_2 = typename Subcurve_traits_2::Approximate_point_2;
 
+protected:
   template <typename T>
   class Approximate_2 {
     using Point_2 = typename Subcurve_traits_2::Point_2;
-
-  protected:
-    const Derived& m_poly_traits;
-    
-    /*! constructs. */
-    Approximate_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
     /*! obtains an approximation of a point.
       */
     Approximate_point_2 operator()(const Point_2& p) {
-      const auto& poly_traits = static_cast<const Derived&>(this).m_poly_traits;
+      const auto& poly_traits = static_cast<const T&>(*this).m_poly_traits;
       return poly_traits.subcurve_traits_2()->approximate_2_object()(p); 
     }
   };
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_approximate_2_xcv {
+class Polycurve_approximate_2_xcv {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
 protected:
@@ -1132,13 +1129,13 @@ protected:
 };
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_approximate_2_xcv
+class Polycurve_approximate_2_xcv
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_approximate_2_xcv<SubcurveTraits_2>::value>> {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
-public:
+protected:
   template <typename T>
   class Approximate_2 {
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
@@ -1148,7 +1145,7 @@ public:
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error,
                               OutputIterator oi, bool l2r = true) {
-      const auto& poly_traits = static_cast<const Derived&>(this).m_poly_traits;
+      const auto& poly_traits = static_cast<const T&>(*this).m_poly_traits;
       auto approximate = poly_traits.subcurve_traits_2()->approximate_2_object();
       if(l2r) {
         for (auto it = xcv.subcurves_begin(); it != xcv.subcurves_end(); ++it)
@@ -1164,16 +1161,29 @@ public:
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_approximate_2_xcv_bounds {};
+class Polycurve_approximate_2_xcv_bounds {
+  using Subcurve_traits_2 = SubcurveTraits_2;
+
+protected:
+  template <typename T>
+  class Approximate_2 {
+    using Point_2 = typename Subcurve_traits_2::Point_2;
+    using Approximate_number_type = typename Subcurve_traits_2::Approximate_number_type;
+
+  public:
+    /*! a placeholder to avoid compilation errors */
+    Approximate_number_type operator()(const Point_2& p, int i) {};
+  };
+};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_approximate_2_xcv_bounds
+class Polycurve_approximate_2_xcv_bounds
 <SubcurveTraits_2,
  Derived,
  std::enable_if_t<has_approximate_2_xcv_bounds<SubcurveTraits_2>::value>> {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
-public:
+protected:
   template <typename T>
   class Approximate_2 {
     using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
@@ -1182,8 +1192,8 @@ public:
     /*! obtains an approximation of an \f$x\f$-monotone curve within a given bounding box. */
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error, OutputIterator oi,
-                              const Bbox_2& bbox, bool l2r = true) const {
-      const auto& poly_traits = static_cast<const Derived&>(this).m_poly_traits;
+                              const Bbox_2& bbox, bool l2r = true) {
+      const auto& poly_traits = static_cast<const T&>(*this).m_poly_traits;
       auto approximate = poly_traits.subcurve_traits_2()->approximate_2_object();
       if(l2r) {
         for (auto it = xcv.subcurves_begin(); it != xcv.subcurves_end(); ++it)
@@ -1199,39 +1209,41 @@ public:
 };
 
 template <typename SubcurveTraits_2, typename Derived, typename = void>
-class Polycurve_basic_approximate_2 {};
+class Polycurve_approximate_2 {};
 
 template <typename SubcurveTraits_2, typename Derived>
-class Polycurve_basic_approximate_2
+class Polycurve_approximate_2
 <SubcurveTraits_2,
  Derived,
- std::enable_if_t<has_approximate_2<SubcurveTraits_2>::value>> {
+ std::enable_if_t<has_approximate_2<SubcurveTraits_2>::value>> :
+    public Polycurve_approximate_2_point<SubcurveTraits_2, Derived>,
+    public Polycurve_approximate_2_xcv<SubcurveTraits_2, Derived>,
+    public Polycurve_approximate_2_xcv_bounds<SubcurveTraits_2, Derived> {
   using Subcurve_traits_2 = SubcurveTraits_2;
   
 public:
   class Approximate_2; // forward declaration
 
 private:
-  using Polycurve_basic_approx_point = 
-    typename Polycurve_basic_approximate_2_point<Subcurve_traits_2, Derived>::template Approximate_2<Approximate_2>;
-  using Polycurve_basic_approx_xcv = 
-    typename Polycurve_basic_approximate_2_xcv<Subcurve_traits_2, Derived>::template Approximate_2<Approximate_2>;
-  using Polycurve_basic_approx_xcv_bounds = 
-    typename Polycurve_basic_approximate_2_xcv_bounds<Subcurve_traits_2, Derived>::template 
-      Approximate_2<Approximate_2>;
+  using Polycurve_approx_point = 
+    typename Polycurve_approximate_2_point<Subcurve_traits_2, Derived>::template Approximate_2<Approximate_2>;
+  using Polycurve_approx_xcv = 
+    typename Polycurve_approximate_2_xcv<Subcurve_traits_2, Derived>::template Approximate_2<Approximate_2>;
+  using Polycurve_approx_xcv_bounds = 
+    typename Polycurve_approximate_2_xcv_bounds<Subcurve_traits_2, Derived>::template Approximate_2<Approximate_2>;
 
 public:
   using Approximate_number_type = typename Subcurve_traits_2::Approximate_number_type;
 
-  class Approximate_2 : public Polycurve_basic_approx_point,
-                        public Polycurve_basic_approx_xcv,
-                        public Polycurve_basic_approx_xcv_bounds {
+  class Approximate_2 : public Polycurve_approx_point,
+                        public Polycurve_approx_xcv,
+                        public Polycurve_approx_xcv_bounds {
     using Point_2 = typename Subcurve_traits_2::Point_2;
 
-    friend class Polycurve_basic_approximate_2<Subcurve_traits_2, Derived>;
-    friend Polycurve_basic_approx_point;
-    friend Polycurve_basic_approx_xcv;
-    friend Polycurve_basic_approx_xcv_bounds;
+    friend class Polycurve_approximate_2<Subcurve_traits_2, Derived>;
+    friend Polycurve_approx_point;
+    friend Polycurve_approx_xcv;
+    friend Polycurve_approx_xcv_bounds;
 
   protected:
     const Derived& m_poly_traits;
@@ -1240,9 +1252,9 @@ public:
     Approximate_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
-    using Polycurve_basic_approx_point::operator();
-    using Polycurve_basic_approx_xcv::operator();
-    using Polycurve_basic_approx_xcv_bounds::operator();
+    using Polycurve_approx_point::operator();
+    using Polycurve_approx_xcv::operator();
+    using Polycurve_approx_xcv_bounds::operator();
 
     /*! obtains an approximation of a point. */
     Approximate_number_type operator()(const Point_2& p, int i) 
@@ -1251,42 +1263,71 @@ public:
 
   /*! obtains an Approximate_2 function object. */
   Approximate_2 approximate_2_object() const
-  { return Approximate_2(*static_cast<const Derived*>(this)); }
+  { return Approximate_2(static_cast<const Derived&>(*this)); }
 };
 
 }
 }
 
 template <typename SubcurveTraits_2 = Arr_non_caching_segment_traits_2<> >
-class Arr_polycurve_basic_traits_2 : 
-    public aos2::internal::Polycurve_basic_parameter_space_in_x_2
+class Arr_polycurve_basic_traits_2 :
+    public aos2::internal::Polycurve_parameter_space_in_x_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_parameter_space_in_y_2
+    public aos2::internal::Polycurve_parameter_space_in_y_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_compare_endpoints_xy_2
+    public aos2::internal::Polycurve_compare_endpoints_xy_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_construct_opposite_2
+    public aos2::internal::Polycurve_construct_opposite_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_construct_point_2
+    public aos2::internal::Polycurve_construct_point_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_construct_x_monotone_curve_2
+    public aos2::internal::Polycurve_construct_x_monotone_curve_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_compare_x_on_boundary_2
+    public aos2::internal::Polycurve_compare_x_on_boundary_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_compare_x_near_boundary_2
+    public aos2::internal::Polycurve_compare_x_near_boundary_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_compare_y_on_boundary_2
+    public aos2::internal::Polycurve_compare_y_on_boundary_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_compare_y_near_boundary_2
+    public aos2::internal::Polycurve_compare_y_near_boundary_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_is_on_y_identification_2
+    public aos2::internal::Polycurve_is_on_y_identification_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_is_on_x_identification_2
+    public aos2::internal::Polycurve_is_on_x_identification_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_trim_2
+    public aos2::internal::Polycurve_trim_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>,
-    public aos2::internal::Polycurve_basic_approximate_2
+    public aos2::internal::Polycurve_approximate_2
       <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>> {
+  friend class aos2::internal::Polycurve_parameter_space_in_x_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_parameter_space_in_y_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_compare_endpoints_xy_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_construct_opposite_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_construct_point_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_construct_x_monotone_curve_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_compare_x_on_boundary_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_compare_x_near_boundary_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_compare_y_on_boundary_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_compare_y_near_boundary_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_is_on_y_identification_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_is_on_x_identification_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_trim_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_approximate_2
+    <SubcurveTraits_2, Arr_polycurve_basic_traits_2<SubcurveTraits_2>>;
+
 public:
   using Subcurve_traits_2 = SubcurveTraits_2;
 

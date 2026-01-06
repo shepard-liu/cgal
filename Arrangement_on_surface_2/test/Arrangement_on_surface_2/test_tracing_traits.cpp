@@ -31,6 +31,13 @@ public:
   ~Tracing_traits_test() 
   { restore_cout(m_old_buf); }
 
+  /*!
+   * \brief Test the side effects of tracing for a given operation.
+   * 
+   * \tparam Lambda 
+   * \param op_id 
+   * \param fn The function that performs the operation.
+   */
   template <typename Lambda>
   void test_tracing(Operation_id op_id, Lambda fn) {
     m_tt.enable_trace(op_id);
@@ -261,14 +268,14 @@ void test_tracing_non_caching_segment_traits() {
   test_tracing_traits(objs);
 }
 
-// void test_tracing_polyline_traits() {
-//   using Base_traits = Polyline_traits_decorating_test_types::Base_traits;
-//   using Tracing_traits = Arr_tracing_traits_2<Base_traits>;
-//   test_type_consistency<Base_traits, Tracing_traits>();
+void test_tracing_polyline_traits() {
+  using Base_traits = Polyline_traits_decorating_test_types::Base_traits;
+  using Tracing_traits = Arr_tracing_traits_2<Base_traits>;
+  test_type_consistency<Base_traits, Tracing_traits>();
 
-//   Polyline_traits_decorating_test_objects<Tracing_traits> objs;
-//   test_tracing_traits(objs);
-// }
+  Polyline_traits_decorating_test_objects<Tracing_traits> objs;
+  test_tracing_traits(objs);
+}
 
 void test_tracing_rational_funcion_traits() {
   using Base_traits = Rational_function_traits_decorating_test_types::Base_traits;
@@ -280,7 +287,7 @@ void test_tracing_rational_funcion_traits() {
 }
 
 void test_tracing_segment_traits() {
-  using Base_traits = typename Segment_traits_decorating_test_types::Base_traits;
+  using Base_traits = Segment_traits_decorating_test_types::Base_traits;
   using Tracing_traits = Arr_tracing_traits_2<Base_traits>;
   test_type_consistency<Base_traits, Tracing_traits>();
 
@@ -298,7 +305,7 @@ int main() {
   test_tracing_geodesic_arc_on_sphere_traits();
   test_tracing_linear_traits();
   test_tracing_non_caching_segment_traits();
-  // test_tracing_polyline_traits();
+  test_tracing_polyline_traits();
   test_tracing_rational_funcion_traits();
   test_tracing_segment_traits();
   return 0;

@@ -37,137 +37,170 @@
 #include <CGAL/Arr_enums.h>
 
 namespace CGAL {
+namespace aos2 {
+namespace internal {
 
-template <typename SubcurveTraits_2 = Arr_segment_traits_2<> >
-class Arr_polycurve_traits_2 :
-    public Arr_polycurve_basic_traits_2<SubcurveTraits_2> {
-public:
+template <typename SubcurveTraits_2, typename Derived, typename = void>
+class Polycurve_split_2 {};
+
+template <typename SubcurveTraits_2, typename Derived>
+class Polycurve_split_2
+<SubcurveTraits_2,
+ Derived,
+ std::enable_if_t<has_split_2<SubcurveTraits_2>::value>> {
   using Subcurve_traits_2 = SubcurveTraits_2;
 
-private:
-  using Base = Arr_polycurve_basic_traits_2<Subcurve_traits_2>;
-
 public:
-  /// \name Types inherited from the polycurve basic traits class.
-  //@{
-  using Has_left_category = typename Base::Has_left_category;
-  using Has_do_intersect_category = typename Base::Has_do_intersect_category;
+  class Split_2 {
+    friend class Polycurve_split_2<SubcurveTraits_2, Derived>;
 
-  using Left_side_category = typename Base::Left_side_category;
-  using Bottom_side_category = typename Base::Bottom_side_category;
-  using Top_side_category = typename Base::Top_side_category;
-  using Right_side_category = typename Base::Right_side_category;
+    using Point_2 = typename Derived::Point_2;
+    using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
+    using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
+    using All_sides_oblivious_category = typename Derived::All_sides_oblivious_category;
+    
+  protected:
+    const Derived& m_poly_traits;
+    
+    /*! constructs. */
+    Split_2(const Derived& traits) : m_poly_traits(traits) {}
 
-  using All_sides_oblivious_category =
-    typename Base::All_sides_oblivious_category;
-
-  using X_monotone_subcurve_2 = typename Base::X_monotone_subcurve_2;
-  using Size = typename Base::Size;
-  using size_type = typename Base::size_type;
-
-  using Point_2 = typename Base::Point_2;
-  using X_monotone_curve_2 = typename Base::X_monotone_curve_2;
-
-  using Compare_x_2 = typename Base::Compare_x_2;
-  using Compare_xy_2 = typename Base::Compare_xy_2;
-  using Construct_min_vertex_2 = typename Base::Construct_min_vertex_2;
-  using Construct_max_vertex_2 = typename Base::Construct_max_vertex_2;
-  using Is_vertical_2 = typename Base::Is_vertical_2;
-  using Compare_y_at_x_2 = typename Base::Compare_y_at_x_2;
-  using Compare_y_at_x_left_2 = typename Base::Compare_y_at_x_left_2;
-  using Compare_y_at_x_right_2 = typename Base::Compare_y_at_x_right_2;
-  using Equal_2 = typename Base::Equal_2;
-  using Compare_endpoints_xy_2 = typename Base::Compare_endpoints_xy_2;
-  using Construct_opposite_2 = typename Base::Construct_opposite_2;
-  using Approximate_2 = typename Base::Approximate_2;
-  using Construct_x_monotone_curve_2 =
-    typename Base::Construct_x_monotone_curve_2;
-  using Parameter_space_in_x_2 = typename Base::Parameter_space_in_x_2;
-  using Parameter_space_in_y_2 = typename Base::Parameter_space_in_y_2;
-  using Compare_x_on_boundary_2 = typename Base::Compare_x_on_boundary_2;
-  using Compare_x_near_boundary_2 = typename Base::Compare_x_near_boundary_2;
-  using Compare_y_on_boundary_2 = typename Base::Compare_y_on_boundary_2;
-  using Compare_y_near_boundary_2 = typename Base::Compare_y_near_boundary_2;
-  using Is_on_y_identification_2 = typename Base::Is_on_y_identification_2;
-  using Is_on_x_identification_2 = typename Base::Is_on_x_identification_2;
-
-  using Trim_2 = typename Base::Trim_2;
-
-  //@}
-
-  /// \name Types and functors inherited from the subcurve geometry traits.
-  //@{
-
-  using Has_merge_category = typename Subcurve_traits_2::Has_merge_category;
-  using Multiplicity = typename Subcurve_traits_2::Multiplicity;
-  using Subcurve_2 = typename Subcurve_traits_2::Curve_2;
-
-  //@}
-
-  // Backward compatibility:
-  using Segment_2 = Subcurve_2;
-
-private:
-  using Self = Arr_polycurve_traits_2<Subcurve_traits_2>;
-
-public:
-  /*! constructs default */
-  Arr_polycurve_traits_2() : Base() {}
-
-  /*! constructs with given subcurve traits
-   * \param seg_traits an already existing subcurve tarits which is passed will
-   *        be used by the class.
-   */
-  Arr_polycurve_traits_2(const Subcurve_traits_2* geom_traits) :
-    Base(geom_traits)
-  {}
-
-  /*! A polycurve represents a general continuous piecewise-linear
-   * curve, without degenerated subcurves.
-   */
-  using Curve_2 = internal::Polycurve_2<Subcurve_2, Point_2>;
-
-  /// \name Basic predicate functors(based on the subcurve traits).
-  //@{
-
-  /*! \class
-   * A functor that obtains the number of points of a polycurve.
-   */
-  class Number_of_points_2 : public Base::Number_of_points_2 {
   public:
-    size_type operator()(const Curve_2& cv) const {
-      size_type num_seg = cv.number_of_subcurves();
-      return (num_seg == 0) ? 0 : num_seg + 1;
+    /*! splits a given x-monotone curve at a given point into two sub-curves.
+     * \param cv The curve to split
+     * \param p The split point.
+     * \param c1 Output: The left resulting subcurve(p is its right endpoint).
+     * \param c2 Output: The right resulting subcurve(p is its left endpoint).
+     * \pre p lies on cv but is not one of its end-points.
+     */
+    void operator()(const X_monotone_curve_2& xcv, const Point_2& p,
+                    X_monotone_curve_2& xcv1, X_monotone_curve_2& xcv2) const {
+      const Subcurve_traits_2* geom_traits = m_poly_traits.subcurve_traits_2();
+      auto min_vertex = geom_traits->construct_min_vertex_2_object();
+      auto max_vertex = geom_traits->construct_max_vertex_2_object();
+      auto equal = geom_traits->equal_2_object();
+      auto cmp_seg_endpts = geom_traits->compare_endpoints_xy_2_object();
+
+      // Make sure the split point is not one of the curve endpoints.
+      CGAL_precondition((! equal(m_poly_traits.
+                                 construct_min_vertex_2_object()(xcv), p)));
+      CGAL_precondition((! equal(m_poly_traits.
+                                 construct_max_vertex_2_object()(xcv), p)));
+
+      CGAL_precondition_msg(xcv.number_of_subcurves() > 0,
+                            "Cannot split a polycurve of length zero.");
+
+      Comparison_result dir = cmp_seg_endpts(xcv[0]);
+
+      // Locate the subcurve on the polycurve xcv that contains p.
+      auto i = m_poly_traits.locate_impl(xcv, p, All_sides_oblivious_category());
+      CGAL_precondition(i != Derived::INVALID_INDEX);
+
+      // Clear the output curves.
+      xcv1.clear();
+      xcv2.clear();
+
+      // Push all subcurves labeled(0, 1, ... , i-1) into xcv1.
+      for (std::size_t j = 0; j < i; ++j) xcv1.push_back(xcv[j]);
+
+      if (dir == SMALLER){
+        // Check whether the split point is xcv[i]'s source or target.
+        if (equal(max_vertex(xcv[i]), p)) {
+          // The entire i-th subcurve belongs to xcv1:
+          xcv1.push_back(xcv[i]);
+        }
+        else if (equal(min_vertex(xcv[i]), p)) {
+          // The entire i-th subcurves belongs to xcv2:
+          xcv2.push_back(xcv[i]);
+        }
+        else {
+          // The i-th subcurve should be split: The left part(seg1)
+          // goes to xcv1, and the right part(seg2) goes to xcv2.
+          X_monotone_subcurve_2 seg1, seg2;
+          m_poly_traits.subcurve_traits_2()->split_2_object()(xcv[i], p,
+                                                              seg1, seg2);
+
+          xcv1.push_back(seg1);
+          xcv2.push_back(seg2);
+        }
+      }
+      else {
+        if (equal(min_vertex(xcv[i]), p)) {
+          xcv1.push_back(xcv[i]);
+        }
+        else if (equal(max_vertex(xcv[i]), p)) {
+          xcv2.push_back(xcv[i]);
+        }
+        else {
+          X_monotone_subcurve_2 seg1, seg2;
+          m_poly_traits.subcurve_traits_2()->
+            split_2_object()(xcv[i], p, seg1, seg2);
+
+          if (cmp_seg_endpts(seg2) == LARGER){
+            xcv1.push_back(seg2);
+          }
+          else {
+            // seg2 has to be reversed
+            seg2 = m_poly_traits.subcurve_traits_2()->
+              construct_opposite_2_object()(seg2);
+            xcv1.push_back(seg2);
+          }
+
+          if (cmp_seg_endpts(seg1) == LARGER){
+            xcv2.push_back(seg1);
+          }
+          else {
+            // seg2 has to be reversed
+            seg1 = m_poly_traits.subcurve_traits_2()->
+              construct_opposite_2_object()(seg1);
+            xcv1.push_back(seg1);
+          }
+        }
+      }
+
+      // Push all subcurves labeled(i+1, i+2, ... , n-1) into xcv1.
+      std::size_t n = xcv.number_of_subcurves();
+
+      for (std::size_t j = i+1; j < n; ++j) xcv2.push_back(xcv[j]);
+
+      if (dir != SMALLER) std::swap(xcv1, xcv2);
     }
   };
 
-  /*! obtains a `Number_of_points_2` functor object. */
-  Number_of_points_2 number_of_points_2_object() const
-  { return Number_of_points_2(); }
+  /*! obtains a `Split_2` functor object. */
+  Split_2 split_2_object() const
+  { return Split_2(static_cast<const Derived&>(*this)); }
+};
 
-  ///@}
+template <typename SubcurveTraits_2, typename Derived, typename = void>
+class Polycurve_make_x_monotone_2 {};
 
-  /// \name Construction functors(based on the subcurve traits).
-  //@{
+template <typename SubcurveTraits_2, typename Derived>
+class Polycurve_make_x_monotone_2
+<SubcurveTraits_2,
+ Derived,
+ std::enable_if_t<has_make_x_monotone_2<SubcurveTraits_2>::value>> {
+  using Subcurve_traits_2 = SubcurveTraits_2;
 
-#ifndef DOXYGEN_RUNNING
-  class Push_back_2;
-#endif
-
+public:
   //! A functor for subdividing curves into x-monotone curves.
   class Make_x_monotone_2 {
+    friend class Polycurve_make_x_monotone_2<Subcurve_traits_2, Derived>;
+
+    using Point_2 = typename Derived::Point_2;
+    using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
+    using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
+    using All_sides_oblivious_category = typename Derived::All_sides_oblivious_category;
+    using Curve_2 = typename Derived::Curve_2;
+    using Push_back_2 = typename Derived::Push_back_2;
+
   protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
-
-    //! The traits (in case it has state)
-    const Polycurve_traits_2& m_poly_traits;
-
-  public:
+    const Derived& m_poly_traits;
+    
     /*! constructs. */
-    Make_x_monotone_2(const Polycurve_traits_2& traits) :
-      m_poly_traits(traits)
-    {}
+    Make_x_monotone_2(const Derived& traits) : m_poly_traits(traits) {}
 
+    private:
     /*! subdivides a given curve into x-monotone sub-curves and insert them into
      * a given output iterator.
      *
@@ -177,7 +210,6 @@ public:
      *           that wraps Point_2 or an X_monotone_curve_2 objects.
      * \return the past-the-end iterator.
      */
-  private:
     template <typename OutputIterator>
     OutputIterator operator_impl(const Curve_2& cv, OutputIterator oi,
                                  Arr_all_sides_oblivious_tag) const {
@@ -472,207 +504,38 @@ public:
 
   /*! obtains a `Make_x_monotone_2` functor object. */
   Make_x_monotone_2 make_x_monotone_2_object() const
-  { return Make_x_monotone_2(*this); }
+  { return Make_x_monotone_2(static_cast<const Derived&>(*this)); }
+};
 
-  /* Functor to augment a polycurve by either adding a vertex or a subcurve
-   * at the back.
-   * TODO: Test all the operator()'s. (Don't forget vertical cases!)
-   */
-  class Push_back_2 : public Base::Push_back_2 {
-  protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
+template <typename SubcurveTraits_2, typename Derived, typename = void>
+class Polycurve_intersect_2 {};
 
-  public:
-    /*! constructs. */
-    Push_back_2(const Polycurve_traits_2& traits) : Base::Push_back_2(traits) {}
+template <typename SubcurveTraits_2, typename Derived>
+class Polycurve_intersect_2
+<SubcurveTraits_2,
+ Derived,
+ std::enable_if_t<has_intersect_2<SubcurveTraits_2>::value>> {
+  using Subcurve_traits_2 = SubcurveTraits_2;
 
-    // Normally, the moment the compiler finds a name, it stops looking. In
-    // other words, the compiler first finds the operator() in the current
-    // class and stops looking, never finding the one in the base class.
-    // Explicitly bring the base operator() into scope, unnecesitating the
-    // code below.
-    using Base::Push_back_2::operator();
-
-    // /*! appends a subcurve to an existing x-monotone polycurve at the back.
-    //  */
-    // void operator()(X_monotone_curve_2& xcv,
-    //                 const X_monotone_subcurve_2& seg)
-    //   const
-    // { Base::Push_back_2::operator()(xcv, seg); }
-
-    /* appends a subcurve to an existing polycurve at the back.
-     * If the polycurve is empty, the subcurve will be its only subcurve.
-     */
-    void operator()(Curve_2& cv, const Subcurve_2& seg) const
-    { cv.push_back(seg); }
-  };
-
-  /*! obtains a `Push_back_2` functor object. */
-  Push_back_2 push_back_2_object() const { return Push_back_2(*this); }
-
-  /* Functor to augment a polycurve by either adding a vertex or a subcurve
-   * at the front.
-   * TODO: Test all the operator()'s. (Don't forget vertical cases!)
-   */
-  class Push_front_2 : public Base::Push_front_2 {
-  protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
-
-  public:
-    /*! constructs. */
-    Push_front_2(const Polycurve_traits_2& traits) :
-      Base::Push_front_2(traits)
-    {}
-
-    // Normally, the moment the compiler finds a name, it stops looking. In
-    // other words, the compiler first finds the operator() in the current
-    // class and stops looking, never finding the one in the base class.
-    // Explicitly bring the base operator() into scope, unnecesitating the
-    // code below.
-    using Base::Push_front_2::operator();
-
-    // /*! appends a subcurve to an existing x-monotone polycurve at the front.
-    //  */
-    // void operator()(X_monotone_curve_2& xcv,
-    //                 const X_monotone_subcurve_2& seg)
-    //   const
-    // { Base::Push_front_2::operator()(xcv, seg); }
-
-    /* appends a subcurve to an existing polycurve at the front. */
-    void operator()(Curve_2& cv, const Subcurve_2& seg) const
-    { cv.push_front(seg); }
-  };
-
-  /*! obtains a `Push_front_2` functor object. */
-  Push_front_2 push_front_2_object() const { return Push_front_2(*this); }
-
-  class Split_2 {
-  protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
-
-    //! The polycurve traits (in case it has state)
-    const Polycurve_traits_2& m_poly_traits;
-
-  public:
-    /*! constructs. */
-    Split_2(const Polycurve_traits_2& traits) : m_poly_traits(traits) {}
-
-  public:
-    /*! splits a given x-monotone curve at a given point into two sub-curves.
-     * \param cv The curve to split
-     * \param p The split point.
-     * \param c1 Output: The left resulting subcurve(p is its right endpoint).
-     * \param c2 Output: The right resulting subcurve(p is its left endpoint).
-     * \pre p lies on cv but is not one of its end-points.
-     */
-    void operator()(const X_monotone_curve_2& xcv, const Point_2& p,
-                    X_monotone_curve_2& xcv1, X_monotone_curve_2& xcv2) const {
-      const Subcurve_traits_2* geom_traits = m_poly_traits.subcurve_traits_2();
-      auto min_vertex = geom_traits->construct_min_vertex_2_object();
-      auto max_vertex = geom_traits->construct_max_vertex_2_object();
-      auto equal = geom_traits->equal_2_object();
-      auto cmp_seg_endpts = geom_traits->compare_endpoints_xy_2_object();
-
-      // Make sure the split point is not one of the curve endpoints.
-      CGAL_precondition((! equal(m_poly_traits.
-                                 construct_min_vertex_2_object()(xcv), p)));
-      CGAL_precondition((! equal(m_poly_traits.
-                                 construct_max_vertex_2_object()(xcv), p)));
-
-      CGAL_precondition_msg(xcv.number_of_subcurves() > 0,
-                            "Cannot split a polycurve of length zero.");
-
-      Comparison_result dir = cmp_seg_endpts(xcv[0]);
-
-      // Locate the subcurve on the polycurve xcv that contains p.
-      auto i = m_poly_traits.locate_impl(xcv, p, All_sides_oblivious_category());
-      CGAL_precondition(i != Polycurve_traits_2::INVALID_INDEX);
-
-      // Clear the output curves.
-      xcv1.clear();
-      xcv2.clear();
-
-      // Push all subcurves labeled(0, 1, ... , i-1) into xcv1.
-      for (std::size_t j = 0; j < i; ++j) xcv1.push_back(xcv[j]);
-
-      if (dir == SMALLER){
-        // Check whether the split point is xcv[i]'s source or target.
-        if (equal(max_vertex(xcv[i]), p)) {
-          // The entire i-th subcurve belongs to xcv1:
-          xcv1.push_back(xcv[i]);
-        }
-        else if (equal(min_vertex(xcv[i]), p)) {
-          // The entire i-th subcurves belongs to xcv2:
-          xcv2.push_back(xcv[i]);
-        }
-        else {
-          // The i-th subcurve should be split: The left part(seg1)
-          // goes to xcv1, and the right part(seg2) goes to xcv2.
-          X_monotone_subcurve_2 seg1, seg2;
-          m_poly_traits.subcurve_traits_2()->split_2_object()(xcv[i], p,
-                                                              seg1, seg2);
-
-          xcv1.push_back(seg1);
-          xcv2.push_back(seg2);
-        }
-      }
-      else {
-        if (equal(min_vertex(xcv[i]), p)) {
-          xcv1.push_back(xcv[i]);
-        }
-        else if (equal(max_vertex(xcv[i]), p)) {
-          xcv2.push_back(xcv[i]);
-        }
-        else {
-          X_monotone_subcurve_2 seg1, seg2;
-          m_poly_traits.subcurve_traits_2()->
-            split_2_object()(xcv[i], p, seg1, seg2);
-
-          if (cmp_seg_endpts(seg2) == LARGER){
-            xcv1.push_back(seg2);
-          }
-          else {
-            // seg2 has to be reversed
-            seg2 = m_poly_traits.subcurve_traits_2()->
-              construct_opposite_2_object()(seg2);
-            xcv1.push_back(seg2);
-          }
-
-          if (cmp_seg_endpts(seg1) == LARGER){
-            xcv2.push_back(seg1);
-          }
-          else {
-            // seg2 has to be reversed
-            seg1 = m_poly_traits.subcurve_traits_2()->
-              construct_opposite_2_object()(seg1);
-            xcv1.push_back(seg1);
-          }
-        }
-      }
-
-      // Push all subcurves labeled(i+1, i+2, ... , n-1) into xcv1.
-      std::size_t n = xcv.number_of_subcurves();
-
-      for (std::size_t j = i+1; j < n; ++j) xcv2.push_back(xcv[j]);
-
-      if (dir != SMALLER) std::swap(xcv1, xcv2);
-    }
-  };
-
-  /*! obtains a `Split_2` functor object. */
-  Split_2 split_2_object() const { return Split_2(*this); }
+public:
+  using Multiplicity = typename Subcurve_traits_2::Multiplicity;
 
   class Intersect_2 {
-  protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
+    friend class Polycurve_intersect_2<SubcurveTraits_2, Derived>;
 
-    //! The polycurve traits (in case it has state)
-    const Polycurve_traits_2& m_poly_traits;
+    using Point_2 = typename Derived::Point_2;
+    using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
+    using Curve_2 = typename Derived::Curve_2;
+    using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
+    using All_sides_oblivious_category = typename Derived::All_sides_oblivious_category;
+
+  protected:
+    const Derived& m_poly_traits;
+    
+    /*! constructs. */
+    Intersect_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
-    /*! constructs. */
-    Intersect_2(const Polycurve_traits_2& traits) : m_poly_traits(traits) {}
-
     /*! finds the intersections of the two given curves and insert them into the
      * given output iterator. As two subcurves may itersect only once, only a
      * single intersection will be contained in the iterator.
@@ -775,7 +638,7 @@ public:
         // left endpoint.
         i1 = m_poly_traits.locate_impl(cv1, cv2[i2], ARR_MIN_END,
                                        All_sides_oblivious_category());
-        if (i1 == Polycurve_traits_2::INVALID_INDEX) return oi;
+        if (i1 == Derived::INVALID_INDEX) return oi;
         if (cmp_y_at_x(cv2[i2], ARR_MIN_END, cv1[i1]) == EQUAL) {
           const auto& p = min_vertex(cv2[i2]);
           update_saved_point(p);
@@ -803,7 +666,7 @@ public:
         // left endpoint.
         i2 = m_poly_traits.locate_impl(cv2, cv1[i1], ARR_MIN_END,
                                        All_sides_oblivious_category());
-        if (i2 == Polycurve_traits_2::INVALID_INDEX) return oi;
+        if (i2 == Derived::INVALID_INDEX) return oi;
         if (cmp_y_at_x(cv1[i1], ARR_MIN_END, cv2[i2]) == EQUAL) {
           const auto& p = min_vertex(cv1[i1]);
           update_saved_point(p);
@@ -997,19 +860,35 @@ public:
   };
 
   /*! obtains an `Intersect_2` functor object. */
-  Intersect_2 intersect_2_object() const { return Intersect_2(*this); }
+  Intersect_2 intersect_2_object() const
+  { return Intersect_2(static_cast<const Derived&>(*this)); }
 
+};
+
+template <typename SubcurveTraits_2, typename Derived, typename = void>
+class Polycurve_are_mergeable_2 {};
+
+template <typename SubcurveTraits_2, typename Derived>
+class Polycurve_are_mergeable_2
+<SubcurveTraits_2,
+ Derived,
+ std::enable_if_t<has_are_mergeable_2<SubcurveTraits_2>::value>> {
+  using Subcurve_traits_2 = SubcurveTraits_2;
+
+public:
   class Are_mergeable_2 {
-  protected:
-    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
+    friend class Polycurve_are_mergeable_2<SubcurveTraits_2, Derived>;
 
-    //! The polycurve traits (in case it has state)
-    const Polycurve_traits_2& m_poly_traits;
+    using Point_2 = typename Derived::Point_2;
+    using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
+
+  protected:
+    const Derived& m_poly_traits;
+    
+    /*! constructs. */
+    Are_mergeable_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
-    /*! constructs. */
-    Are_mergeable_2(const Polycurve_traits_2& traits) : m_poly_traits(traits) {}
-
     /*! checks whether it is possible to merge two given x-monotone curves.
      * \param cv1 The first curve.
      * \param cv2 The second curve.
@@ -1049,8 +928,20 @@ public:
 
   /*! obtains an `Are_mergeable_2` functor object. */
   Are_mergeable_2 are_mergeable_2_object() const
-  { return Are_mergeable_2(*this); }
+  { return Are_mergeable_2(static_cast<const Derived&>(*this)); }
+};
 
+template <typename SubcurveTraits_2, typename Derived, typename = void>
+class Polycurve_merge_2 {};
+
+template <typename SubcurveTraits_2, typename Derived>
+class Polycurve_merge_2
+<SubcurveTraits_2,
+ Derived,
+ std::enable_if_t<has_merge_2<SubcurveTraits_2>::value>> {
+  using Subcurve_traits_2 = SubcurveTraits_2;
+
+public:
   /*! \class Merge_2
    * A functor that merges two x-monotone curves into one.
    */
@@ -1058,18 +949,19 @@ public:
    *          changing the subcurve traits class.
    */
   class Merge_2 {
-  protected:
-    using Geometry_traits = Arr_polycurve_traits_2<Subcurve_traits_2>;
+    friend class Polycurve_merge_2<SubcurveTraits_2, Derived>;
 
-    //! The traits (in case it has state)
-    const Geometry_traits& m_poly_traits;
+    using X_monotone_curve_2 = typename Derived::X_monotone_curve_2;
+    using X_monotone_subcurve_2 = typename Derived::X_monotone_subcurve_2;
+    using Equal_2 = typename Derived::Equal_2;
+
+  protected:
+    const Derived& m_poly_traits;
+    
+    /*! constructs. */
+    Merge_2(const Derived& traits) : m_poly_traits(traits) {}
 
   public:
-    /*! constructs
-     * \param traits the traits (in case it has state)
-     */
-    Merge_2(const Geometry_traits& traits) : m_poly_traits(traits) {}
-
     /*! merges two given x-monotone curves into a single curve(segment).
      * \param cv1 The first curve.
      * \param cv2 The second curve.
@@ -1123,7 +1015,197 @@ public:
   };
 
   /*! obtains a `Merge_2` functor object. */
-  Merge_2 merge_2_object() const { return Merge_2(*this); }
+  Merge_2 merge_2_object() const
+  { return Merge_2(static_cast<const Derived&>(*this)); }
+};
+
+}
+}
+
+template <typename SubcurveTraits_2 = Arr_segment_traits_2<> >
+class Arr_polycurve_traits_2 :
+    public Arr_polycurve_basic_traits_2<SubcurveTraits_2>,
+    public aos2::internal::Polycurve_split_2
+      <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>,
+    public aos2::internal::Polycurve_make_x_monotone_2
+      <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>,
+    public aos2::internal::Polycurve_intersect_2
+      <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>,
+    public aos2::internal::Polycurve_are_mergeable_2
+      <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>,
+    public aos2::internal::Polycurve_merge_2
+      <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>> {
+  friend class aos2::internal::Polycurve_split_2
+    <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_make_x_monotone_2
+    <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_intersect_2
+    <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_are_mergeable_2
+    <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>;
+  friend class aos2::internal::Polycurve_merge_2
+    <SubcurveTraits_2, Arr_polycurve_traits_2<SubcurveTraits_2>>;
+
+public:
+  using Subcurve_traits_2 = SubcurveTraits_2;
+
+private:
+  using Base = Arr_polycurve_basic_traits_2<Subcurve_traits_2>;
+
+public:
+  /// \name Types inherited from the polycurve basic traits class.
+  //@{
+  using Has_left_category = typename Base::Has_left_category;
+  using Has_do_intersect_category = typename Base::Has_do_intersect_category;
+
+  using Left_side_category = typename Base::Left_side_category;
+  using Bottom_side_category = typename Base::Bottom_side_category;
+  using Top_side_category = typename Base::Top_side_category;
+  using Right_side_category = typename Base::Right_side_category;
+
+  using All_sides_oblivious_category =
+    typename Base::All_sides_oblivious_category;
+
+  using X_monotone_subcurve_2 = typename Base::X_monotone_subcurve_2;
+  using Size = typename Base::Size;
+  using size_type = typename Base::size_type;
+
+  using Point_2 = typename Base::Point_2;
+  using X_monotone_curve_2 = typename Base::X_monotone_curve_2;
+
+  //@}
+
+  /// \name Types and functors inherited from the subcurve geometry traits.
+  //@{
+
+  using Has_merge_category = typename Subcurve_traits_2::Has_merge_category;
+  using Multiplicity = typename Subcurve_traits_2::Multiplicity;
+  using Subcurve_2 = typename Subcurve_traits_2::Curve_2;
+
+  //@}
+
+  // Backward compatibility:
+  using Segment_2 = Subcurve_2;
+
+private:
+  using Self = Arr_polycurve_traits_2<Subcurve_traits_2>;
+
+public:
+  /*! constructs default */
+  Arr_polycurve_traits_2() : Base() {}
+
+  /*! constructs with given subcurve traits
+   * \param seg_traits an already existing subcurve tarits which is passed will
+   *        be used by the class.
+   */
+  Arr_polycurve_traits_2(const Subcurve_traits_2* geom_traits) :
+    Base(geom_traits)
+  {}
+
+  /*! A polycurve represents a general continuous piecewise-linear
+   * curve, without degenerated subcurves.
+   */
+  using Curve_2 = internal::Polycurve_2<Subcurve_2, Point_2>;
+
+  /// \name Basic predicate functors(based on the subcurve traits).
+  //@{
+
+  /*! \class
+   * A functor that obtains the number of points of a polycurve.
+   */
+  class Number_of_points_2 : public Base::Number_of_points_2 {
+  public:
+    size_type operator()(const Curve_2& cv) const {
+      size_type num_seg = cv.number_of_subcurves();
+      return (num_seg == 0) ? 0 : num_seg + 1;
+    }
+  };
+
+  /*! obtains a `Number_of_points_2` functor object. */
+  Number_of_points_2 number_of_points_2_object() const
+  { return Number_of_points_2(); }
+
+  ///@}
+
+  /// \name Construction functors(based on the subcurve traits).
+  //@{
+
+#ifndef DOXYGEN_RUNNING
+  class Push_back_2;
+#endif
+
+  /* Functor to augment a polycurve by either adding a vertex or a subcurve
+   * at the back.
+   * TODO: Test all the operator()'s. (Don't forget vertical cases!)
+   */
+  class Push_back_2 : public Base::Push_back_2 {
+  protected:
+    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
+
+  public:
+    /*! constructs. */
+    Push_back_2(const Polycurve_traits_2& traits) : Base::Push_back_2(traits) {}
+
+    // Normally, the moment the compiler finds a name, it stops looking. In
+    // other words, the compiler first finds the operator() in the current
+    // class and stops looking, never finding the one in the base class.
+    // Explicitly bring the base operator() into scope, unnecesitating the
+    // code below.
+    using Base::Push_back_2::operator();
+
+    // /*! appends a subcurve to an existing x-monotone polycurve at the back.
+    //  */
+    // void operator()(X_monotone_curve_2& xcv,
+    //                 const X_monotone_subcurve_2& seg)
+    //   const
+    // { Base::Push_back_2::operator()(xcv, seg); }
+
+    /* appends a subcurve to an existing polycurve at the back.
+     * If the polycurve is empty, the subcurve will be its only subcurve.
+     */
+    void operator()(Curve_2& cv, const Subcurve_2& seg) const
+    { cv.push_back(seg); }
+  };
+
+  /*! obtains a `Push_back_2` functor object. */
+  Push_back_2 push_back_2_object() const { return Push_back_2(*this); }
+
+  /* Functor to augment a polycurve by either adding a vertex or a subcurve
+   * at the front.
+   * TODO: Test all the operator()'s. (Don't forget vertical cases!)
+   */
+  class Push_front_2 : public Base::Push_front_2 {
+  protected:
+    using Polycurve_traits_2 = Arr_polycurve_traits_2<Subcurve_traits_2>;
+
+  public:
+    /*! constructs. */
+    Push_front_2(const Polycurve_traits_2& traits) :
+      Base::Push_front_2(traits)
+    {}
+
+    // Normally, the moment the compiler finds a name, it stops looking. In
+    // other words, the compiler first finds the operator() in the current
+    // class and stops looking, never finding the one in the base class.
+    // Explicitly bring the base operator() into scope, unnecesitating the
+    // code below.
+    using Base::Push_front_2::operator();
+
+    // /*! appends a subcurve to an existing x-monotone polycurve at the front.
+    //  */
+    // void operator()(X_monotone_curve_2& xcv,
+    //                 const X_monotone_subcurve_2& seg)
+    //   const
+    // { Base::Push_front_2::operator()(xcv, seg); }
+
+    /* appends a subcurve to an existing polycurve at the front. */
+    void operator()(Curve_2& cv, const Subcurve_2& seg) const
+    { cv.push_front(seg); }
+  };
+
+  /*! obtains a `Push_front_2` functor object. */
+  Push_front_2 push_front_2_object() const { return Push_front_2(*this); }
+
   ///@}
 
   /*! \class

@@ -470,8 +470,8 @@ protected:
   public:
     /*! obtains an approximation of a point.
      */
-    Approximate_point_2 operator()(const Point_2& p) const {
-      const T* derived = static_cast<const T*>(this); 
+    Approximate_point_2 operator()(const Point_2& p) {
+      T* derived = static_cast<T*>(this); 
       ++derived->m_counter2;
       return derived->m_object(p);
     }
@@ -513,7 +513,7 @@ protected:
     /*! obtains an approximation of an \f$x\f$-monotone curve. */
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error, OutputIterator oi, bool l2r = true) {
-      const T* derived = static_cast<const T*>(this);
+      T* derived = static_cast<T*>(this);
       ++derived->m_counter3;
       return derived->m_object(xcv, error, oi, l2r);
     }
@@ -557,7 +557,7 @@ protected:
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error, OutputIterator oi,
                                    const Bbox_2& bbox, bool l2r = true) {
-      const T* derived = static_cast<const T*>(this); 
+      T* derived = static_cast<T*>(this); 
       ++derived->m_counter4;
       return derived->m_object(xcv, error, oi, bbox, l2r);
     }

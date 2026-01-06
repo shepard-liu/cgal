@@ -26,60 +26,71 @@
 using namespace CGAL;
 using Epeck = Exact_predicates_exact_constructions_kernel;
 
-/*! Checks the consistency of the presence of functors in two traits-classes.
+/*! Checks the consistency of the presence of functors in the wrapped traits
+ * class(W) and the decorating traits class(D). The constraint is required when
+ * designing decorating traits classes that applies side-effects only. 
  */
-template <typename T1, typename T2>
+template <typename W, typename D>
 void test_type_consistency() {
   using namespace CGAL;
 
-  static_assert(has_compare_x_2<T1>::value == has_compare_x_2<T2>::value, "compare_x_2 presence mismatch");
-  static_assert(has_compare_xy_2<T1>::value == has_compare_xy_2<T2>::value, "compare_xy_2 presence mismatch");
-  static_assert(has_construct_min_vertex_2<T1>::value == has_construct_min_vertex_2<T2>::value,
+  static_assert(has_compare_x_2<W>::value == has_compare_x_2<D>::value,
+                "compare_x_2 presence mismatch");
+  static_assert(has_compare_xy_2<W>::value == has_compare_xy_2<D>::value,
+                "compare_xy_2 presence mismatch");
+  static_assert(has_construct_min_vertex_2<W>::value == has_construct_min_vertex_2<D>::value,
                 "construct_min_vertex_2 presence mismatch");
-  static_assert(has_construct_max_vertex_2<T1>::value == has_construct_max_vertex_2<T2>::value,
+  static_assert(has_construct_max_vertex_2<W>::value == has_construct_max_vertex_2<D>::value,
                 "construct_max_vertex_2 presence mismatch");
-  static_assert(has_is_vertical_2<T1>::value == has_is_vertical_2<T2>::value, "is_vertical_2 presence mismatch");
-  static_assert(has_compare_y_at_x_2<T1>::value == has_compare_y_at_x_2<T2>::value,
+  static_assert(has_is_vertical_2<W>::value == has_is_vertical_2<D>::value,
+                "is_vertical_2 presence mismatch");
+  static_assert(has_compare_y_at_x_2<W>::value == has_compare_y_at_x_2<D>::value,
                 "compare_y_at_x_2 presence mismatch");
-  static_assert(has_equal_2<T1>::value == has_equal_2<T2>::value, "equal_2 presence mismatch");
-  static_assert(has_compare_y_at_x_left_2<T1>::value == has_compare_y_at_x_left_2<T2>::value,
+  static_assert(has_equal_2<W>::value == has_equal_2<D>::value,
+                "equal_2 presence mismatch");
+  static_assert(has_compare_y_at_x_left_2<W>::value == has_compare_y_at_x_left_2<D>::value,
                 "compare_y_at_x_left_2 presence mismatch");
-  static_assert(has_compare_y_at_x_right_2<T1>::value == has_compare_y_at_x_right_2<T2>::value,
+  static_assert(has_compare_y_at_x_right_2<W>::value == has_compare_y_at_x_right_2<D>::value,
                 "compare_y_at_x_right_2 presence mismatch");
-  static_assert(has_make_x_monotone_2<T1>::value == has_make_x_monotone_2<T2>::value,
+  static_assert(has_make_x_monotone_2<W>::value == has_make_x_monotone_2<D>::value,
                 "make_x_monotone_2 presence mismatch");
-  static_assert(has_split_2<T1>::value == has_split_2<T2>::value, "split_2 presence mismatch");
-  static_assert(has_intersect_2<T1>::value == has_intersect_2<T2>::value, "intersect_2 presence mismatch");
-  static_assert(has_are_mergeable_2<T1>::value == has_are_mergeable_2<T2>::value, "are_mergeable_2 presence mismatch");
-  static_assert(has_merge_2<T1>::value == has_merge_2<T2>::value, "merge_2 presence mismatch");
-  static_assert(has_construct_opposite_2<T1>::value == has_construct_opposite_2<T2>::value,
+  static_assert(has_split_2<W>::value == has_split_2<D>::value,
+                "split_2 presence mismatch");
+  static_assert(has_intersect_2<W>::value == has_intersect_2<D>::value,
+                "intersect_2 presence mismatch");
+  static_assert(has_are_mergeable_2<W>::value == has_are_mergeable_2<D>::value,
+                "are_mergeable_2 presence mismatch");
+  static_assert(has_merge_2<W>::value == has_merge_2<D>::value,
+                "merge_2 presence mismatch");
+  static_assert(has_construct_opposite_2<W>::value == has_construct_opposite_2<D>::value,
                 "construct_opposite_2 presence mismatch");
-  static_assert(has_construct_point_2<T1>::value == has_construct_point_2<T2>::value,
+  static_assert(has_construct_point_2<W>::value == has_construct_point_2<D>::value,
                 "construct_point_2 presence mismatch");
-  static_assert(has_compare_endpoints_xy_2<T1>::value == has_compare_endpoints_xy_2<T2>::value,
+  static_assert(has_compare_endpoints_xy_2<W>::value == has_compare_endpoints_xy_2<D>::value,
                 "compare_endpoints_xy_2 presence mismatch");
-  static_assert(has_approximate_2<T1>::value == has_approximate_2<T2>::value, "approximate_2 presence mismatch");
-  static_assert(has_approximate_2_point<T1>::value == has_approximate_2_point<T2>::value,
+  static_assert(has_approximate_2<W>::value == has_approximate_2<D>::value,
+                "approximate_2 presence mismatch");
+  static_assert(has_approximate_2_point<W>::value == has_approximate_2_point<D>::value,
                 "approximate_point_2 presence mismatch");
-  static_assert(has_approximate_2_xcv<T1>::value == has_approximate_2_xcv<T2>::value,
+  static_assert(has_approximate_2_xcv<W>::value == has_approximate_2_xcv<D>::value,
                 "approximate_xcv_2 presence mismatch");
-  static_assert(has_approximate_2_xcv_bounds<T1>::value == has_approximate_2_xcv_bounds<T2>::value,
+  static_assert(has_approximate_2_xcv_bounds<W>::value == has_approximate_2_xcv_bounds<D>::value,
                 "approximate_xcv_2_within_bounds presence mismatch");
-  static_assert(has_parameter_space_in_x_2<T1>::value == has_parameter_space_in_x_2<T2>::value,
+  static_assert(has_parameter_space_in_x_2<W>::value == has_parameter_space_in_x_2<D>::value,
                 "parameter_space_in_x_2 presence mismatch");
-  static_assert(has_is_on_x_identification_2<T1>::value == has_is_on_x_identification_2<T2>::value,
+  static_assert(has_is_on_x_identification_2<W>::value == has_is_on_x_identification_2<D>::value,
                 "is_on_x_identification_2 presence mismatch");
-  static_assert(has_compare_y_on_boundary_2<T1>::value == has_compare_y_on_boundary_2<T2>::value,
+  static_assert(has_compare_y_on_boundary_2<W>::value == has_compare_y_on_boundary_2<D>::value,
                 "compare_y_on_boundary_2 presence mismatch");
-  static_assert(has_compare_y_near_boundary_2<T1>::value == has_compare_y_near_boundary_2<T2>::value,
+  static_assert(has_compare_y_near_boundary_2<W>::value == has_compare_y_near_boundary_2<D>::value,
                 "compare_y_near_boundary_2 presence mismatch");
-  static_assert(has_parameter_space_in_y_2<T1>::value == has_parameter_space_in_y_2<T2>::value,
+  static_assert(has_parameter_space_in_y_2<W>::value == has_parameter_space_in_y_2<D>::value,
                 "parameter_space_in_y_2 presence mismatch");
-  static_assert(has_is_on_y_identification_2<T1>::value == has_is_on_y_identification_2<T2>::value,
+  static_assert(has_is_on_y_identification_2<W>::value == has_is_on_y_identification_2<D>::value,
                 "is_on_y_identification_2 presence mismatch");
-  static_assert(has_compare_x_on_boundary_2<T1>::value == has_compare_x_on_boundary_2<T2>::value,
+  static_assert(has_compare_x_on_boundary_2<W>::value == has_compare_x_on_boundary_2<D>::value,
                 "compare_x_on_boundary_2 presence mismatch");
-  static_assert(has_compare_x_near_boundary_2<T1>::value == has_compare_x_near_boundary_2<T2>::value,
+  static_assert(has_compare_x_near_boundary_2<W>::value == has_compare_x_near_boundary_2<D>::value,
                 "compare_x_near_boundary_2 presence mismatch");
 }
 
@@ -87,15 +98,16 @@ void test_type_consistency() {
  * <namespace>::<identifier> or the provided <fallback_type>.
  */
 #define DECL_COND_SNIFAE_TYPE(alias, namespace, identifier, fallback_type)                                             \
-  template <typename T_, typename = void>                                                                               \
+  template <typename T_, typename = void>                                                                              \
   struct conditional_snifae_type_##namespace##_##identifier                                                            \
   { using type = fallback_type; };                                                                                     \
                                                                                                                        \
-  template <typename T_>                                                                                                \
-  struct conditional_snifae_type_##namespace##_##identifier<T_, std::void_t<typename T_::identifier>>                    \
-  { using type = typename T_::identifier; };                                                                            \
+  template <typename T_>                                                                                               \
+  struct conditional_snifae_type_##namespace##_##identifier<T_, std::void_t<typename T_::identifier>>                  \
+  { using type = typename T_::identifier; };                                                                           \
                                                                                                                        \
-  using alias = typename conditional_snifae_type_##namespace##_##identifier<namespace>::type;
+  using alias = typename conditional_snifae_type_##namespace##_##identifier<namespace>::type;                          
+// End DECL_COND_SNIFAE_TYPE
 
 template <typename T>
 struct Decorating_traits_test_objects {
@@ -460,6 +472,7 @@ public:
   static constexpr bool value = decltype(test(static_cast<const Gt*>(nullptr)))::value;
 };
 
+// There's a special case we need to handle when using conic traits as a base class
 template <typename Gt>
 inline constexpr bool is_or_derived_from_conic_traits_v = is_or_derived_from_conic_traits<Gt>::value;
 

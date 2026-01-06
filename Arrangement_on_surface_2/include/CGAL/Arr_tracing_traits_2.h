@@ -601,7 +601,7 @@ protected:
     /*! obtains an approximation of a point.
       */
     Approximate_point_2 operator()(const Point_2& p) {
-      const T* derived = static_cast<const T*>(this);
+      T* derived = static_cast<T*>(this);
       if (! derived->m_enabled) return derived->m_object(p);
       std::cout << "approximate" << std::endl
                 << "  p: " << p << std::endl;
@@ -634,21 +634,19 @@ class Tracing_approximate_2_xcv<BaseTraits,
                                 std::enable_if_t<has_approximate_2_xcv<BaseTraits>::value>> {
   using Base = BaseTraits;
 
-public:
-  using Approximate_point_2 = typename Base::Approximate_point_2;
-
 protected:
   /*! A functor that approximates \f$x\f$-monotone curves. */
   template <typename T>
   class Approximate_2 {
     using X_monotone_curve_2 = typename Base::X_monotone_curve_2;
+    using Approximate_point_2 = typename Base::Approximate_point_2;
 
   public:
     /*! obtains an approximation of an \f$x\f$-monotone curve. */
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error,
                               OutputIterator oi, bool l2r = true) {
-      const T* derived = static_cast<const T*>(this);
+      T* derived = static_cast<T*>(this);
       if (! derived->m_enabled) return derived->m_object(xcv, error, oi, l2r);
       std::cout << "approximate" << std::endl
                 << "  xcv: " << xcv << ", error: " << error
@@ -702,8 +700,8 @@ protected:
     /*! obtains an approximation of an \f$x\f$-monotone curve within a given bounding box. */
     template <typename OutputIterator>
     OutputIterator operator()(const X_monotone_curve_2& xcv, double error, OutputIterator oi,
-                              const Bbox_2& bbox, bool l2r = true) const {
-      const T* derived = static_cast<const T*>(this);
+                              const Bbox_2& bbox, bool l2r = true) {
+      T* derived = static_cast<T*>(this);
       if (! derived->m_enabled) return derived->m_object(xcv, error, oi, l2r);
       std::cout << "approximate" << std::endl
                 << "  xcv: " << xcv << ", error: " << error

@@ -233,14 +233,14 @@ void test_counting_non_caching_segment_traits() {
   test_counting_traits(objs);
 }
 
-// void test_counting_polyline_traits() {
-//   using Base_traits = Polyline_traits_decorating_test_types::Base_traits;
-//   using Counting_traits = Arr_counting_traits_2<Base_traits>;
-//   test_type_consistency<Base_traits, Counting_traits>();
+void test_counting_polyline_traits() {
+  using Base_traits = Polyline_traits_decorating_test_types::Base_traits;
+  using Counting_traits = Arr_counting_traits_2<Base_traits>;
+  test_type_consistency<Base_traits, Counting_traits>();
 
-//   Polyline_traits_decorating_test_objects<Counting_traits> objs;
-//   test_counting_traits(objs);
-// }
+  Polyline_traits_decorating_test_objects<Counting_traits> objs;
+  test_counting_traits(objs);
+}
 
 void test_counting_rational_funcion_traits() {
   using Base_traits = Rational_function_traits_decorating_test_types::Base_traits;
@@ -252,7 +252,7 @@ void test_counting_rational_funcion_traits() {
 }
 
 void test_counting_segment_traits() {
-  using Base_traits = typename Segment_traits_decorating_test_types::Base_traits;
+  using Base_traits = Segment_traits_decorating_test_types::Base_traits;
   using Counting_traits = Arr_counting_traits_2<Base_traits>;
   test_type_consistency<Base_traits, Counting_traits>();
 
@@ -270,7 +270,7 @@ int main() {
   test_counting_geodesic_arc_on_sphere_traits();
   test_counting_linear_traits();
   test_counting_non_caching_segment_traits();
-  // test_counting_polyline_traits(); 
+  test_counting_polyline_traits(); 
   test_counting_rational_funcion_traits();
   test_counting_segment_traits();
   return 0;
